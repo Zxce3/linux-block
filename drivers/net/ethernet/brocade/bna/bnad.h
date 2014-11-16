@@ -28,7 +28,6 @@
 #include <linux/if_vlan.h>
 
 /* Fix for IA64 */
-#include <asm/checksum.h>
 #include <net/ip6_checksum.h>
 
 #include <net/ip.h>

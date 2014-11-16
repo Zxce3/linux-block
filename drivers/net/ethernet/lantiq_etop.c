@@ -36,8 +36,6 @@
 #include <linux/dma-mapping.h>
 #include <linux/module.h>
 
-#include <asm/checksum.h>
-
 #include <lantiq_soc.h>
 #include <xway_dma.h>
 #include <lantiq_platform.h>

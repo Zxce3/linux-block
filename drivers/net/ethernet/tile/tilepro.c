@@ -32,7 +32,6 @@
 #include <linux/timer.h>
 #include <linux/io.h>
 #include <linux/u64_stats_sync.h>
-#include <asm/checksum.h>
 #include <asm/homecache.h>
 
 #include <hv/drv_xgbe_intf.h>

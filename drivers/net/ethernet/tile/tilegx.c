@@ -42,7 +42,6 @@
 #include <linux/ptp_clock_kernel.h>
 #include <linux/tick.h>
 
-#include <asm/checksum.h>
 #include <asm/homecache.h>
 #include <gxio/mpipe.h>
 #include <arch/sim.h>

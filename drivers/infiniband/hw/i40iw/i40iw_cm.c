@@ -58,7 +58,6 @@
 #include <net/ip6_route.h>
 #include <net/ip_fib.h>
 #include <net/tcp.h>
-#include <asm/checksum.h>
 
 #include "i40iw.h"
 
