@@ -25,6 +25,15 @@
 #include <asm/uaccess.h>
 #include <asm/checksum.h>
 
+#ifndef _HAVE_ARCH_CSUM_TCPUDP_MAGIC
+static inline __sum16
+csum_tcpudp_magic(__be32 saddr, __be32 daddr, __u32 len,
+		  __u8 proto, __wsum sum)
+{
+	return csum_fold(csum_tcpudp_nofold(saddr, daddr, len, proto, sum));
+}
+#endif
+
 #ifndef _HAVE_ARCH_COPY_AND_CSUM_FROM_USER
 static inline
 __wsum csum_and_copy_from_user (const void __user *src, void *dst,

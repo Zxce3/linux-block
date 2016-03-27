@@ -41,7 +41,7 @@ __wsum csum_partial_copy_nocheck(const void *src, void *dst,
 __wsum csum_tcpudp_nofold(__be32 saddr, __be32 daddr,
 			  __u32 len, __u8 proto, __wsum sum);
 
-#define csum_tcpudp_magic csum_tcpudp_magic
+#define _HAVE_ARCH_CSUM_TCPUDP_MAGIC
 __sum16 csum_tcpudp_magic(__be32 saddr, __be32 daddr,
 			  __u32 len, __u8 proto, __wsum sum);
 
