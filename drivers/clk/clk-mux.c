@@ -68,15 +68,17 @@ unsigned int clk_mux_index_to_val(u32 *table, unsigned int flags, u8 index)
 }
 EXPORT_SYMBOL_GPL(clk_mux_index_to_val);
 
-static u8 clk_mux_get_parent(struct clk_hw *hw)
+static struct clk_hw *clk_mux_get_parent(struct clk_hw *hw)
 {
 	struct clk_mux *mux = to_clk_mux(hw);
 	u32 val;
+	int index;
 
 	val = clk_readl(mux->reg) >> mux->shift;
 	val &= mux->mask;
+	index = clk_mux_val_to_index(hw, mux->table, mux->flags, val);
 
-	return clk_mux_val_to_index(hw, mux->table, mux->flags, val);
+	return clk_hw_get_parent_by_index(hw, index);
 }
 
 static int clk_mux_set_parent(struct clk_hw *hw, u8 index)
@@ -118,14 +120,14 @@ static int clk_mux_determine_rate(struct clk_hw *hw,
 }
 
 const struct clk_ops clk_mux_ops = {
-	.get_parent = clk_mux_get_parent,
+	.get_parent_hw = clk_mux_get_parent,
 	.set_parent = clk_mux_set_parent,
 	.determine_rate = clk_mux_determine_rate,
 };
 EXPORT_SYMBOL_GPL(clk_mux_ops);
 
 const struct clk_ops clk_mux_ro_ops = {
-	.get_parent = clk_mux_get_parent,
+	.get_parent_hw = clk_mux_get_parent,
 };
 EXPORT_SYMBOL_GPL(clk_mux_ro_ops);
 
