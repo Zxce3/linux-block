@@ -291,7 +291,7 @@ static const struct clk_ops ingenic_pll_ops = {
  * Operations for all non-PLL clocks
  */
 
-static u8 ingenic_clk_get_parent(struct clk_hw *hw)
+static struct clk_hw *ingenic_clk_get_parent(struct clk_hw *hw)
 {
 	struct ingenic_clk *ingenic_clk = to_ingenic_clk(hw);
 	struct ingenic_cgu *cgu = ingenic_clk->cgu;
@@ -316,7 +316,7 @@ static u8 ingenic_clk_get_parent(struct clk_hw *hw)
 		}
 	}
 
-	return idx;
+	return clk_hw_get_parent_by_index(hw, idx);
 }
 
 static int ingenic_clk_set_parent(struct clk_hw *hw, u8 idx)
@@ -556,7 +556,7 @@ static int ingenic_clk_is_enabled(struct clk_hw *hw)
 }
 
 static const struct clk_ops ingenic_clk_ops = {
-	.get_parent = ingenic_clk_get_parent,
+	.get_parent_hw = ingenic_clk_get_parent,
 	.set_parent = ingenic_clk_set_parent,
 
 	.recalc_rate = ingenic_clk_recalc_rate,

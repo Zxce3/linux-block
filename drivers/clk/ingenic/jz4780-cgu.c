@@ -97,10 +97,10 @@
 
 static struct ingenic_cgu *cgu;
 
-static u8 jz4780_otg_phy_get_parent(struct clk_hw *hw)
+static struct clk_hw *jz4780_otg_phy_get_parent(struct clk_hw *hw)
 {
 	/* we only use CLKCORE, revisit if that ever changes */
-	return 0;
+	return clk_hw_get_parent_by_index(hw, 0);
 }
 
 static int jz4780_otg_phy_set_parent(struct clk_hw *hw, u8 idx)
@@ -204,7 +204,7 @@ static int jz4780_otg_phy_set_rate(struct clk_hw *hw, unsigned long req_rate,
 }
 
 static const struct clk_ops jz4780_otg_phy_ops = {
-	.get_parent = jz4780_otg_phy_get_parent,
+	.get_parent_hw = jz4780_otg_phy_get_parent,
 	.set_parent = jz4780_otg_phy_set_parent,
 
 	.recalc_rate = jz4780_otg_phy_recalc_rate,
