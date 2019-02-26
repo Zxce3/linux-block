@@ -294,18 +294,18 @@ static const char * const dmn_clk_parents[] = {
 	"pll3",
 };
 
-static u8 dmn_clk_get_parent(struct clk_hw *hw)
+static struct clk_hw *dmn_clk_get_parent(struct clk_hw *hw)
 {
 	struct clk_dmn *clk = to_dmnclk(hw);
 	u32 cfg = clkc_readl(clk->regofs);
 
 	/* parent of io domain can only be pll3 */
 	if (strcmp(hw->init->name, "io") == 0)
-		return 4;
+		return clk_hw_get_parent_by_index(hw, 4);
 
 	WARN_ON((cfg & (BIT(3) - 1)) > 4);
 
-	return cfg & (BIT(3) - 1);
+	return clk_hw_get_parent_by_index(hw, cfg & (BIT(3) - 1));
 }
 
 static int dmn_clk_set_parent(struct clk_hw *hw, u8 parent)
@@ -442,7 +442,7 @@ static const struct clk_ops msi_ops = {
 	.round_rate = dmn_clk_round_rate,
 	.recalc_rate = dmn_clk_recalc_rate,
 	.set_parent = dmn_clk_set_parent,
-	.get_parent = dmn_clk_get_parent,
+	.get_parent_hw = dmn_clk_get_parent,
 };
 
 static const struct clk_init_data clk_mem_init = {
@@ -490,7 +490,7 @@ static struct clk_dmn clk_io = {
 
 static const struct clk_ops cpu_ops = {
 	.set_parent = dmn_clk_set_parent,
-	.get_parent = dmn_clk_get_parent,
+	.get_parent_hw = dmn_clk_get_parent,
 	.set_rate = cpu_clk_set_rate,
 	.round_rate = cpu_clk_round_rate,
 	.recalc_rate = cpu_clk_recalc_rate,
@@ -519,7 +519,7 @@ static const struct clk_ops dmn_ops = {
 	.round_rate = dmn_clk_round_rate,
 	.recalc_rate = dmn_clk_recalc_rate,
 	.set_parent = dmn_clk_set_parent,
-	.get_parent = dmn_clk_get_parent,
+	.get_parent_hw = dmn_clk_get_parent,
 };
 
 /* dsp, gfx, mm, lcd and vpp domain */

@@ -560,11 +560,11 @@ static int dto_clk_set_rate(struct clk_hw *hw, unsigned long rate,
 	return 0;
 }
 
-static u8 dto_clk_get_parent(struct clk_hw *hw)
+static struct clk_hw *dto_clk_get_parent(struct clk_hw *hw)
 {
 	struct clk_dto *clk = to_dtoclk(hw);
 
-	return clkc_readl(clk->src_offset);
+	return clk_hw_get_parent_by_index(hw, clkc_readl(clk->src_offset));
 }
 
 /*
@@ -585,7 +585,7 @@ static const struct clk_ops dto_ops = {
 	.recalc_rate = dto_clk_recalc_rate,
 	.round_rate = dto_clk_round_rate,
 	.set_rate = dto_clk_set_rate,
-	.get_parent = dto_clk_get_parent,
+	.get_parent_hw = dto_clk_get_parent,
 	.set_parent = dto_clk_set_parent,
 };
 
