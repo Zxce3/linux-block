@@ -448,14 +448,15 @@ static int clk_sam9x5_main_set_parent(struct clk_hw *hw, u8 index)
 	return 0;
 }
 
-static u8 clk_sam9x5_main_get_parent(struct clk_hw *hw)
+static struct clk_hw *clk_sam9x5_main_get_parent(struct clk_hw *hw)
 {
 	struct clk_sam9x5_main *clkmain = to_clk_sam9x5_main(hw);
 	unsigned int status;
 
 	regmap_read(clkmain->regmap, AT91_CKGR_MOR, &status);
+	status = status & AT91_PMC_MOSCEN ? 1 : 0;
 
-	return status & AT91_PMC_MOSCEN ? 1 : 0;
+	return clk_hw_get_parent_by_index(hw, status);
 }
 
 static const struct clk_ops sam9x5_main_ops = {
@@ -463,7 +464,7 @@ static const struct clk_ops sam9x5_main_ops = {
 	.is_prepared = clk_sam9x5_main_is_prepared,
 	.recalc_rate = clk_sam9x5_main_recalc_rate,
 	.set_parent = clk_sam9x5_main_set_parent,
-	.get_parent = clk_sam9x5_main_get_parent,
+	.get_parent_hw = clk_sam9x5_main_get_parent,
 };
 
 struct clk_hw * __init

@@ -117,14 +117,14 @@ static int at91sam9x5_clk_usb_set_parent(struct clk_hw *hw, u8 index)
 	return 0;
 }
 
-static u8 at91sam9x5_clk_usb_get_parent(struct clk_hw *hw)
+static struct clk_hw *at91sam9x5_clk_usb_get_parent(struct clk_hw *hw)
 {
 	struct at91sam9x5_clk_usb *usb = to_at91sam9x5_clk_usb(hw);
 	unsigned int usbr;
 
 	regmap_read(usb->regmap, AT91_PMC_USB, &usbr);
 
-	return usbr & AT91_PMC_USBS;
+	return clk_hw_get_parent_by_index(hw, usbr & AT91_PMC_USBS);
 }
 
 static int at91sam9x5_clk_usb_set_rate(struct clk_hw *hw, unsigned long rate,
@@ -149,7 +149,7 @@ static int at91sam9x5_clk_usb_set_rate(struct clk_hw *hw, unsigned long rate,
 static const struct clk_ops at91sam9x5_usb_ops = {
 	.recalc_rate = at91sam9x5_clk_usb_recalc_rate,
 	.determine_rate = at91sam9x5_clk_usb_determine_rate,
-	.get_parent = at91sam9x5_clk_usb_get_parent,
+	.get_parent_hw = at91sam9x5_clk_usb_get_parent,
 	.set_parent = at91sam9x5_clk_usb_set_parent,
 	.set_rate = at91sam9x5_clk_usb_set_rate,
 };

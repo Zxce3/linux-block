@@ -125,7 +125,7 @@ static int clk_programmable_set_parent(struct clk_hw *hw, u8 index)
 	return 0;
 }
 
-static u8 clk_programmable_get_parent(struct clk_hw *hw)
+static struct clk_hw *clk_programmable_get_parent(struct clk_hw *hw)
 {
 	struct clk_programmable *prog = to_clk_programmable(hw);
 	const struct clk_programmable_layout *layout = prog->layout;
@@ -139,7 +139,7 @@ static u8 clk_programmable_get_parent(struct clk_hw *hw)
 	if (layout->have_slck_mck && (pckr & AT91_PMC_CSSMCK_MCK) && !ret)
 		ret = PROG_MAX_RM9200_CSS + 1;
 
-	return ret;
+	return clk_hw_get_parent_by_index(hw, ret);
 }
 
 static int clk_programmable_set_rate(struct clk_hw *hw, unsigned long rate,
@@ -178,7 +178,7 @@ static int clk_programmable_set_rate(struct clk_hw *hw, unsigned long rate,
 static const struct clk_ops programmable_ops = {
 	.recalc_rate = clk_programmable_recalc_rate,
 	.determine_rate = clk_programmable_determine_rate,
-	.get_parent = clk_programmable_get_parent,
+	.get_parent_hw = clk_programmable_get_parent,
 	.set_parent = clk_programmable_set_parent,
 	.set_rate = clk_programmable_set_rate,
 };

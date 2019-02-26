@@ -90,21 +90,21 @@ static unsigned long clk_master_recalc_rate(struct clk_hw *hw,
 	return rate;
 }
 
-static u8 clk_master_get_parent(struct clk_hw *hw)
+static struct clk_hw *clk_master_get_parent(struct clk_hw *hw)
 {
 	struct clk_master *master = to_clk_master(hw);
 	unsigned int mckr;
 
 	regmap_read(master->regmap, AT91_PMC_MCKR, &mckr);
 
-	return mckr & AT91_PMC_CSS;
+	return clk_hw_get_parent_by_index(hw, mckr & AT91_PMC_CSS);
 }
 
 static const struct clk_ops master_ops = {
 	.prepare = clk_master_prepare,
 	.is_prepared = clk_master_is_prepared,
 	.recalc_rate = clk_master_recalc_rate,
-	.get_parent = clk_master_get_parent,
+	.get_parent_hw = clk_master_get_parent,
 };
 
 struct clk_hw * __init

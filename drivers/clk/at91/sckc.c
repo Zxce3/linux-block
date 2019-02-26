@@ -315,16 +315,19 @@ static int clk_sam9x5_slow_set_parent(struct clk_hw *hw, u8 index)
 	return 0;
 }
 
-static u8 clk_sam9x5_slow_get_parent(struct clk_hw *hw)
+static struct clk_hw *clk_sam9x5_slow_get_parent(struct clk_hw *hw)
 {
 	struct clk_sam9x5_slow *slowck = to_clk_sam9x5_slow(hw);
+	int val;
 
-	return !!(readl(slowck->sckcr) & AT91_SCKC_OSCSEL);
+	val = !!(readl(slowck->sckcr) & AT91_SCKC_OSCSEL);
+
+	return clk_hw_get_parent_by_index(hw, val);
 }
 
 static const struct clk_ops sam9x5_slow_ops = {
 	.set_parent = clk_sam9x5_slow_set_parent,
-	.get_parent = clk_sam9x5_slow_get_parent,
+	.get_parent_hw = clk_sam9x5_slow_get_parent,
 };
 
 static struct clk_hw * __init
