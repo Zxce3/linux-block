@@ -156,8 +156,8 @@ out:
 	return 0;
 }
 
-u8 ccu_mux_helper_get_parent(struct ccu_common *common,
-			     struct ccu_mux_internal *cm)
+struct clk_hw *ccu_mux_helper_get_parent(struct ccu_common *common,
+					 struct ccu_mux_internal *cm)
 {
 	u32 reg;
 	u8 parent;
@@ -172,10 +172,10 @@ u8 ccu_mux_helper_get_parent(struct ccu_common *common,
 
 		for (i = 0; i < num_parents; i++)
 			if (cm->table[i] == parent)
-				return i;
+				parent = i;
 	}
 
-	return parent;
+	return clk_hw_get_parent_by_index(&common->hw, parent);
 }
 
 int ccu_mux_helper_set_parent(struct ccu_common *common,
@@ -220,7 +220,7 @@ static int ccu_mux_is_enabled(struct clk_hw *hw)
 	return ccu_gate_helper_is_enabled(&cm->common, cm->enable);
 }
 
-static u8 ccu_mux_get_parent(struct clk_hw *hw)
+static struct clk_hw *ccu_mux_get_parent(struct clk_hw *hw)
 {
 	struct ccu_mux *cm = hw_to_ccu_mux(hw);
 
@@ -248,7 +248,7 @@ const struct clk_ops ccu_mux_ops = {
 	.enable		= ccu_mux_enable,
 	.is_enabled	= ccu_mux_is_enabled,
 
-	.get_parent	= ccu_mux_get_parent,
+	.get_parent_hw	= ccu_mux_get_parent,
 	.set_parent	= ccu_mux_set_parent,
 
 	.determine_rate	= __clk_mux_determine_rate,
