@@ -386,7 +386,7 @@ static int _si5351_pll_reparent(struct si5351_driver_data *drvdata,
 	return 0;
 }
 
-static unsigned char si5351_pll_get_parent(struct clk_hw *hw)
+static struct clk_hw *si5351_pll_get_parent(struct clk_hw *hw)
 {
 	struct si5351_hw_data *hwdata =
 		container_of(hw, struct si5351_hw_data, hw);
@@ -395,7 +395,7 @@ static unsigned char si5351_pll_get_parent(struct clk_hw *hw)
 
 	val = si5351_reg_read(hwdata->drvdata, SI5351_PLL_INPUT_SOURCE);
 
-	return (val & mask) ? 1 : 0;
+	return clk_hw_get_parent_by_index(hw, (val & mask) ? 1 : 0);
 }
 
 static int si5351_pll_set_parent(struct clk_hw *hw, u8 index)
@@ -535,7 +535,7 @@ static int si5351_pll_set_rate(struct clk_hw *hw, unsigned long rate,
 
 static const struct clk_ops si5351_pll_ops = {
 	.set_parent = si5351_pll_set_parent,
-	.get_parent = si5351_pll_get_parent,
+	.get_parent_hw = si5351_pll_get_parent,
 	.recalc_rate = si5351_pll_recalc_rate,
 	.round_rate = si5351_pll_round_rate,
 	.set_rate = si5351_pll_set_rate,
@@ -579,15 +579,16 @@ static int _si5351_msynth_reparent(struct si5351_driver_data *drvdata,
 	return 0;
 }
 
-static unsigned char si5351_msynth_get_parent(struct clk_hw *hw)
+static struct clk_hw *si5351_msynth_get_parent(struct clk_hw *hw)
 {
 	struct si5351_hw_data *hwdata =
 		container_of(hw, struct si5351_hw_data, hw);
 	u8 val;
 
 	val = si5351_reg_read(hwdata->drvdata, SI5351_CLK0_CTRL + hwdata->num);
+	val = (val & SI5351_CLK_PLL_SELECT) ? 1 : 0;
 
-	return (val & SI5351_CLK_PLL_SELECT) ? 1 : 0;
+	return clk_hw_get_parent_by_index(hw, val);
 }
 
 static int si5351_msynth_set_parent(struct clk_hw *hw, u8 index)
@@ -791,7 +792,7 @@ static int si5351_msynth_set_rate(struct clk_hw *hw, unsigned long rate,
 
 static const struct clk_ops si5351_msynth_ops = {
 	.set_parent = si5351_msynth_set_parent,
-	.get_parent = si5351_msynth_get_parent,
+	.get_parent_hw = si5351_msynth_get_parent,
 	.recalc_rate = si5351_msynth_recalc_rate,
 	.round_rate = si5351_msynth_round_rate,
 	.set_rate = si5351_msynth_set_rate,
@@ -955,7 +956,7 @@ static void si5351_clkout_unprepare(struct clk_hw *hw)
 			(1 << hwdata->num), (1 << hwdata->num));
 }
 
-static u8 si5351_clkout_get_parent(struct clk_hw *hw)
+static struct clk_hw *si5351_clkout_get_parent(struct clk_hw *hw)
 {
 	struct si5351_hw_data *hwdata =
 		container_of(hw, struct si5351_hw_data, hw);
@@ -978,7 +979,7 @@ static u8 si5351_clkout_get_parent(struct clk_hw *hw)
 		break;
 	}
 
-	return index;
+	return clk_hw_get_parent_by_index(hw, index);
 }
 
 static int si5351_clkout_set_parent(struct clk_hw *hw, u8 index)
@@ -1137,7 +1138,7 @@ static const struct clk_ops si5351_clkout_ops = {
 	.prepare = si5351_clkout_prepare,
 	.unprepare = si5351_clkout_unprepare,
 	.set_parent = si5351_clkout_set_parent,
-	.get_parent = si5351_clkout_get_parent,
+	.get_parent_hw = si5351_clkout_get_parent,
 	.recalc_rate = si5351_clkout_recalc_rate,
 	.round_rate = si5351_clkout_round_rate,
 	.set_rate = si5351_clkout_set_rate,
