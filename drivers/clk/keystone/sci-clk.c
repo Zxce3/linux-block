@@ -215,7 +215,7 @@ static int sci_clk_set_rate(struct clk_hw *hw, unsigned long rate,
  *
  * Returns the index of the currently selected parent for a TI SCI clock.
  */
-static u8 sci_clk_get_parent(struct clk_hw *hw)
+static struct clk_hw *sci_clk_get_parent(struct clk_hw *hw)
 {
 	struct sci_clk *clk = to_sci_clk(hw);
 	u8 parent_id;
@@ -227,10 +227,10 @@ static u8 sci_clk_get_parent(struct clk_hw *hw)
 		dev_err(clk->provider->dev,
 			"get-parent failed for dev=%d, clk=%d, ret=%d\n",
 			clk->dev_id, clk->clk_id, ret);
-		return 0;
+		return clk_hw_get_parent_by_index(hw, 0);
 	}
 
-	return parent_id - clk->clk_id - 1;
+	return clk_hw_get_parent_by_index(hw, parent_id - clk->clk_id - 1);
 }
 
 /**
@@ -256,7 +256,7 @@ static const struct clk_ops sci_clk_ops = {
 	.recalc_rate = sci_clk_recalc_rate,
 	.determine_rate = sci_clk_determine_rate,
 	.set_rate = sci_clk_set_rate,
-	.get_parent = sci_clk_get_parent,
+	.get_parent_hw = sci_clk_get_parent,
 	.set_parent = sci_clk_set_parent,
 };
 
