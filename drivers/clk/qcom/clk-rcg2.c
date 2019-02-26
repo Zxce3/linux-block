@@ -72,7 +72,7 @@ static int clk_rcg2_is_enabled(struct clk_hw *hw)
 	return (cmd & CMD_ROOT_OFF) == 0;
 }
 
-static u8 clk_rcg2_get_parent(struct clk_hw *hw)
+static struct clk_hw *clk_rcg2_get_parent(struct clk_hw *hw)
 {
 	struct clk_rcg2 *rcg = to_clk_rcg2(hw);
 	int num_parents = clk_hw_get_num_parents(hw);
@@ -88,12 +88,12 @@ static u8 clk_rcg2_get_parent(struct clk_hw *hw)
 
 	for (i = 0; i < num_parents; i++)
 		if (cfg == rcg->parent_map[i].cfg)
-			return i;
+			return clk_hw_get_parent_by_index(hw, i);
 
 err:
 	pr_debug("%s: Clock %s has invalid parent, using default.\n",
 		 __func__, clk_hw_get_name(hw));
-	return 0;
+	return clk_hw_get_parent_by_index(hw, 0);
 }
 
 static int update_config(struct clk_rcg2 *rcg)
@@ -353,7 +353,7 @@ static int clk_rcg2_set_floor_rate_and_parent(struct clk_hw *hw,
 
 const struct clk_ops clk_rcg2_ops = {
 	.is_enabled = clk_rcg2_is_enabled,
-	.get_parent = clk_rcg2_get_parent,
+	.get_parent_hw = clk_rcg2_get_parent,
 	.set_parent = clk_rcg2_set_parent,
 	.recalc_rate = clk_rcg2_recalc_rate,
 	.determine_rate = clk_rcg2_determine_rate,
@@ -364,7 +364,7 @@ EXPORT_SYMBOL_GPL(clk_rcg2_ops);
 
 const struct clk_ops clk_rcg2_floor_ops = {
 	.is_enabled = clk_rcg2_is_enabled,
-	.get_parent = clk_rcg2_get_parent,
+	.get_parent_hw = clk_rcg2_get_parent,
 	.set_parent = clk_rcg2_set_parent,
 	.recalc_rate = clk_rcg2_recalc_rate,
 	.determine_rate = clk_rcg2_determine_floor_rate,
@@ -491,7 +491,7 @@ static int clk_edp_pixel_determine_rate(struct clk_hw *hw,
 
 const struct clk_ops clk_edp_pixel_ops = {
 	.is_enabled = clk_rcg2_is_enabled,
-	.get_parent = clk_rcg2_get_parent,
+	.get_parent_hw = clk_rcg2_get_parent,
 	.set_parent = clk_rcg2_set_parent,
 	.recalc_rate = clk_rcg2_recalc_rate,
 	.set_rate = clk_edp_pixel_set_rate,
@@ -549,7 +549,7 @@ static int clk_byte_set_rate_and_parent(struct clk_hw *hw,
 
 const struct clk_ops clk_byte_ops = {
 	.is_enabled = clk_rcg2_is_enabled,
-	.get_parent = clk_rcg2_get_parent,
+	.get_parent_hw = clk_rcg2_get_parent,
 	.set_parent = clk_rcg2_set_parent,
 	.recalc_rate = clk_rcg2_recalc_rate,
 	.set_rate = clk_byte_set_rate,
@@ -619,7 +619,7 @@ static int clk_byte2_set_rate_and_parent(struct clk_hw *hw,
 
 const struct clk_ops clk_byte2_ops = {
 	.is_enabled = clk_rcg2_is_enabled,
-	.get_parent = clk_rcg2_get_parent,
+	.get_parent_hw = clk_rcg2_get_parent,
 	.set_parent = clk_rcg2_set_parent,
 	.recalc_rate = clk_rcg2_recalc_rate,
 	.set_rate = clk_byte2_set_rate,
@@ -709,7 +709,7 @@ static int clk_pixel_set_rate_and_parent(struct clk_hw *hw, unsigned long rate,
 
 const struct clk_ops clk_pixel_ops = {
 	.is_enabled = clk_rcg2_is_enabled,
-	.get_parent = clk_rcg2_get_parent,
+	.get_parent_hw = clk_rcg2_get_parent,
 	.set_parent = clk_rcg2_set_parent,
 	.recalc_rate = clk_rcg2_recalc_rate,
 	.set_rate = clk_pixel_set_rate,
@@ -796,7 +796,7 @@ static int clk_gfx3d_set_rate(struct clk_hw *hw, unsigned long rate,
 
 const struct clk_ops clk_gfx3d_ops = {
 	.is_enabled = clk_rcg2_is_enabled,
-	.get_parent = clk_rcg2_get_parent,
+	.get_parent_hw = clk_rcg2_get_parent,
 	.set_parent = clk_rcg2_set_parent,
 	.recalc_rate = clk_rcg2_recalc_rate,
 	.set_rate = clk_gfx3d_set_rate,
@@ -934,7 +934,7 @@ static void clk_rcg2_shared_disable(struct clk_hw *hw)
 const struct clk_ops clk_rcg2_shared_ops = {
 	.enable = clk_rcg2_shared_enable,
 	.disable = clk_rcg2_shared_disable,
-	.get_parent = clk_rcg2_get_parent,
+	.get_parent_hw = clk_rcg2_get_parent,
 	.set_parent = clk_rcg2_set_parent,
 	.recalc_rate = clk_rcg2_recalc_rate,
 	.determine_rate = clk_rcg2_determine_rate,
@@ -1076,7 +1076,7 @@ clk_rcg2_dfs_recalc_rate(struct clk_hw *hw, unsigned long parent_rate)
 
 static const struct clk_ops clk_rcg2_dfs_ops = {
 	.is_enabled = clk_rcg2_is_enabled,
-	.get_parent = clk_rcg2_get_parent,
+	.get_parent_hw = clk_rcg2_get_parent,
 	.determine_rate = clk_rcg2_dfs_determine_rate,
 	.recalc_rate = clk_rcg2_dfs_recalc_rate,
 };

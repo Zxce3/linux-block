@@ -23,7 +23,7 @@ static inline struct clk_regmap_mux *to_clk_regmap_mux(struct clk_hw *hw)
 	return container_of(to_clk_regmap(hw), struct clk_regmap_mux, clkr);
 }
 
-static u8 mux_get_parent(struct clk_hw *hw)
+static struct clk_hw *mux_get_parent(struct clk_hw *hw)
 {
 	struct clk_regmap_mux *mux = to_clk_regmap_mux(hw);
 	struct clk_regmap *clkr = to_clk_regmap(hw);
@@ -36,9 +36,9 @@ static u8 mux_get_parent(struct clk_hw *hw)
 	val &= mask;
 
 	if (mux->parent_map)
-		return qcom_find_src_index(hw, mux->parent_map, val);
-
-	return val;
+		return clk_hw_get_parent_by_index(hw,
+						  qcom_find_src_index(hw, mux->parent_map, val));return clk_hw_get_parent_by_index(hw,
+																   val);
 }
 
 static int mux_set_parent(struct clk_hw *hw, u8 index)
@@ -58,7 +58,7 @@ static int mux_set_parent(struct clk_hw *hw, u8 index)
 }
 
 const struct clk_ops clk_regmap_mux_closest_ops = {
-	.get_parent = mux_get_parent,
+	.get_parent_hw = mux_get_parent,
 	.set_parent = mux_set_parent,
 	.determine_rate = __clk_mux_determine_rate_closest,
 };
