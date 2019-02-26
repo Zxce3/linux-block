@@ -222,7 +222,7 @@ static int tegra_bpmp_clk_set_parent(struct clk_hw *hw, u8 index)
 	return 0;
 }
 
-static u8 tegra_bpmp_clk_get_parent(struct clk_hw *hw)
+static struct clk_hw *tegra_bpmp_clk_get_parent(struct clk_hw *hw)
 {
 	struct tegra_bpmp_clk *clk = to_tegra_bpmp_clk(hw);
 	struct cmd_clk_get_parent_response response;
@@ -240,14 +240,13 @@ static u8 tegra_bpmp_clk_get_parent(struct clk_hw *hw)
 	if (err < 0) {
 		dev_err(clk->bpmp->dev, "failed to get parent for %s: %d\n",
 			clk_hw_get_name(hw), err);
-		return U8_MAX;
+		return clk_hw_get_parent_by_index(hw, U8_MAX);
 	}
 
 	for (i = 0; i < clk->num_parents; i++)
 		if (clk->parents[i] == response.parent_id)
-			return i;
-
-	return U8_MAX;
+			return clk_hw_get_parent_by_index(hw, i);return clk_hw_get_parent_by_index(hw,
+												   U8_MAX);
 }
 
 static int tegra_bpmp_clk_set_rate(struct clk_hw *hw, unsigned long rate,
@@ -285,7 +284,7 @@ static const struct clk_ops tegra_bpmp_clk_mux_ops = {
 	.is_prepared = tegra_bpmp_clk_is_prepared,
 	.recalc_rate = tegra_bpmp_clk_recalc_rate,
 	.set_parent = tegra_bpmp_clk_set_parent,
-	.get_parent = tegra_bpmp_clk_get_parent,
+	.get_parent_hw = tegra_bpmp_clk_get_parent,
 };
 
 static const struct clk_ops tegra_bpmp_clk_rate_ops = {
@@ -304,7 +303,7 @@ static const struct clk_ops tegra_bpmp_clk_mux_rate_ops = {
 	.recalc_rate = tegra_bpmp_clk_recalc_rate,
 	.round_rate = tegra_bpmp_clk_round_rate,
 	.set_parent = tegra_bpmp_clk_set_parent,
-	.get_parent = tegra_bpmp_clk_get_parent,
+	.get_parent_hw = tegra_bpmp_clk_get_parent,
 	.set_rate = tegra_bpmp_clk_set_rate,
 };
 

@@ -155,7 +155,7 @@ static int emc_determine_rate(struct clk_hw *hw, struct clk_rate_request *req)
 	return 0;
 }
 
-static u8 emc_get_parent(struct clk_hw *hw)
+static struct clk_hw *emc_get_parent(struct clk_hw *hw)
 {
 	struct tegra_clk_emc *tegra;
 	u32 val;
@@ -164,8 +164,8 @@ static u8 emc_get_parent(struct clk_hw *hw)
 
 	val = readl(tegra->clk_regs + CLK_SOURCE_EMC);
 
-	return (val >> CLK_SOURCE_EMC_EMC_2X_CLK_SRC_SHIFT)
-		& CLK_SOURCE_EMC_EMC_2X_CLK_SRC_MASK;
+	return clk_hw_get_parent_by_index(hw,
+				          (val >> CLK_SOURCE_EMC_EMC_2X_CLK_SRC_SHIFT) & CLK_SOURCE_EMC_EMC_2X_CLK_SRC_MASK);
 }
 
 static struct tegra_emc *emc_ensure_emc_driver(struct tegra_clk_emc *tegra)
@@ -466,7 +466,7 @@ static const struct clk_ops tegra_clk_emc_ops = {
 	.recalc_rate = emc_recalc_rate,
 	.determine_rate = emc_determine_rate,
 	.set_rate = emc_set_rate,
-	.get_parent = emc_get_parent,
+	.get_parent_hw = emc_get_parent,
 };
 
 struct clk *tegra_clk_register_emc(void __iomem *base, struct device_node *np,
