@@ -40,7 +40,7 @@ static unsigned long socfpga_dbg_clk_recalc_rate(struct clk_hw *hwclk,
 	return parent_rate / div;
 }
 
-static u8 socfpga_gate_get_parent(struct clk_hw *hwclk)
+static struct clk_hw *socfpga_gate_get_parent(struct clk_hw *hwclk)
 {
 	struct socfpga_gate_clk *socfpgaclk = to_socfpga_gate_clk(hwclk);
 	u32 mask;
@@ -51,17 +51,17 @@ static u8 socfpga_gate_get_parent(struct clk_hw *hwclk)
 		parent = ((readl(socfpgaclk->bypass_reg) & mask) >>
 			  socfpgaclk->bypass_shift);
 	}
-	return parent;
+	return clk_hw_get_parent_by_index(hwclk, parent);
 }
 
 static struct clk_ops gateclk_ops = {
 	.recalc_rate = socfpga_gate_clk_recalc_rate,
-	.get_parent = socfpga_gate_get_parent,
+	.get_parent_hw = socfpga_gate_get_parent,
 };
 
 static const struct clk_ops dbgclk_ops = {
 	.recalc_rate = socfpga_dbg_clk_recalc_rate,
-	.get_parent = socfpga_gate_get_parent,
+	.get_parent_hw = socfpga_gate_get_parent,
 };
 
 struct clk *s10_register_gate(const char *name, const char *parent_name,

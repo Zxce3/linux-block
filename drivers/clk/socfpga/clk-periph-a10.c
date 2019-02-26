@@ -64,7 +64,7 @@ static u8 clk_periclk_get_parent(struct clk_hw *hwclk)
 
 static const struct clk_ops periclk_ops = {
 	.recalc_rate = clk_periclk_recalc_rate,
-	.get_parent = clk_periclk_get_parent,
+	.get_parent_hw = clk_periclk_get_parent,
 };
 
 static __init void __socfpga_periph_init(struct device_node *node,

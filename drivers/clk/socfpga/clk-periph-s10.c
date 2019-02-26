@@ -44,7 +44,7 @@ static unsigned long clk_peri_cnt_clk_recalc_rate(struct clk_hw *hwclk,
 	return parent_rate / div;
 }
 
-static u8 clk_periclk_get_parent(struct clk_hw *hwclk)
+static struct clk_hw *clk_periclk_get_parent(struct clk_hw *hwclk)
 {
 	struct socfpga_periph_clk *socfpgaclk = to_periph_clk(hwclk);
 	u32 clk_src, mask;
@@ -59,17 +59,17 @@ static u8 clk_periclk_get_parent(struct clk_hw *hwclk)
 		parent = (clk_src >> CLK_MGR_FREE_SHIFT) &
 			CLK_MGR_FREE_MASK;
 	}
-	return parent;
+	return clk_hw_get_parent_by_index(hwclk, parent);
 }
 
 static const struct clk_ops peri_c_clk_ops = {
 	.recalc_rate = clk_peri_c_clk_recalc_rate,
-	.get_parent = clk_periclk_get_parent,
+	.get_parent_hw = clk_periclk_get_parent,
 };
 
 static const struct clk_ops peri_cnt_clk_ops = {
 	.recalc_rate = clk_peri_cnt_clk_recalc_rate,
-	.get_parent = clk_periclk_get_parent,
+	.get_parent_hw = clk_periclk_get_parent,
 };
 
 struct clk *s10_register_periph(const char *name, const char *parent_name,
