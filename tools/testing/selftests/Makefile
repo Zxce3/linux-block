@@ -60,6 +60,7 @@ TARGETS += resctrl
 TARGETS += rlimits
 TARGETS += rseq
 TARGETS += rtc
+TARGETS += readfile
 TARGETS += seccomp
 TARGETS += sgx
 TARGETS += sigaltstack
