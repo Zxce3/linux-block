@@ -1940,7 +1940,7 @@ static void free_note_info(struct elf_note_info *info)
 /* Here is the structure in which status of each thread is captured. */
 struct elf_thread_status
 {
-	struct list_head list;
+	struct elf_thread_status *next;
 	struct elf_prstatus prstatus;	/* NT_PRSTATUS */
 	elf_fpregset_t fpu;		/* NT_PRFPREG */
 	struct task_struct *thread;
@@ -1982,7 +1982,7 @@ struct elf_note_info {
 	struct memelfnote *notes_files;
 	struct elf_prstatus *prstatus;	/* NT_PRSTATUS */
 	struct elf_prpsinfo *psinfo;	/* NT_PRPSINFO */
-	struct list_head thread_list;
+	struct elf_thread_status *thread;
 	elf_fpregset_t *fpu;
 	user_siginfo_t csigdata;
 	int thread_status_size;
@@ -1992,7 +1992,6 @@ struct elf_note_info {
 static int elf_note_info_init(struct elf_note_info *info)
 {
 	memset(info, 0, sizeof(*info));
-	INIT_LIST_HEAD(&info->thread_list);
 
 	/* Allocate space for ELF notes */
 	info->notes = kmalloc_array(8, sizeof(struct memelfnote), GFP_KERNEL);
@@ -2028,13 +2027,12 @@ static int fill_note_info(struct elfhdr *elf, int phdrs,
 			return 0;
 
 		ets->thread = ct->task;
-		list_add(&ets->list, &info->thread_list);
+		ets->next = info->thread;
+		info->thread = ets;
 	}
 
-	list_for_each_entry(ets, &info->thread_list, list) {
-		int sz;
-
-		sz = elf_dump_thread_status(siginfo->si_signo, ets);
+	for (ets = info->thread; ets ; ets = ets->next) {
+		int sz = elf_dump_thread_status(siginfo->si_signo, ets);
 		info->thread_status_size += sz;
 	}
 	/* now collect the dump for the current */
@@ -2099,7 +2097,7 @@ static int write_note_info(struct elf_note_info *info,
 			return 0;
 
 	/* write out the thread status notes section */
-	list_for_each_entry(ets, &info->thread_list, list) {
+	for (ets = info->thread; ets ; ets = ets->next) {
 		for (i = 0; i < ets->num_notes; i++)
 			if (!writenote(&ets->notes[i], cprm))
 				return 0;
@@ -2110,10 +2108,11 @@ static int write_note_info(struct elf_note_info *info,
 
 static void free_note_info(struct elf_note_info *info)
 {
-	while (!list_empty(&info->thread_list)) {
-		struct list_head *tmp = info->thread_list.next;
-		list_del(tmp);
-		kfree(list_entry(tmp, struct elf_thread_status, list));
+	struct elf_thread_status *threads = info->thread;
+	while (threads) {
+		struct elf_thread_status *t = threads;
+		threads = t->next;
+		kfree(t);
 	}
 
 	/* Free data possibly allocated by fill_files_note(): */
