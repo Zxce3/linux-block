@@ -1785,7 +1785,7 @@ static int fill_thread_core_info(struct elf_thread_core_info *t,
 
 static int fill_note_info(struct elfhdr *elf, int phdrs,
 			  struct elf_note_info *info,
-			  const kernel_siginfo_t *siginfo, struct pt_regs *regs)
+			  const kernel_siginfo_t *siginfo)
 {
 	struct task_struct *dump_task = current;
 	const struct user_regset_view *view = task_user_regset_view(dump_task);
@@ -2014,10 +2014,11 @@ static int elf_note_info_init(struct elf_note_info *info)
 
 static int fill_note_info(struct elfhdr *elf, int phdrs,
 			  struct elf_note_info *info,
-			  const kernel_siginfo_t *siginfo, struct pt_regs *regs)
+			  const kernel_siginfo_t *siginfo)
 {
 	struct core_thread *ct;
 	struct elf_thread_status *ets;
+	struct pt_regs *regs;
 
 	if (!elf_note_info_init(info))
 		return 0;
@@ -2039,6 +2040,7 @@ static int fill_note_info(struct elfhdr *elf, int phdrs,
 		info->thread_status_size += sz;
 	}
 	/* now collect the dump for the current */
+	regs = task_pt_regs(current);
 	memset(info->prstatus, 0, sizeof(*info->prstatus));
 	fill_prstatus(info->prstatus, current, siginfo->si_signo);
 	elf_core_copy_regs(&info->prstatus->pr_reg, regs);
@@ -2186,7 +2188,7 @@ static int elf_core_dump(struct coredump_params *cprm)
 	 * Collect all the non-memory information about the process for the
 	 * notes.  This also sets up the file header.
 	 */
-	if (!fill_note_info(&elf, e_phnum, &info, cprm->siginfo, task_pt_regs(current)))
+	if (!fill_note_info(&elf, e_phnum, &info, cprm->siginfo))
 		goto end_coredump;
 
 	has_dumped = 1;
