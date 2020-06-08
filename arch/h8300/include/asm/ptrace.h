@@ -26,7 +26,6 @@ struct task_struct;
 #define user_stack_pointer(regs) ((regs)->sp)
 #define current_pt_regs() ((struct pt_regs *) \
 	(THREAD_SIZE + (unsigned long)current_thread_info()) - 1)
-#define signal_pt_regs() ((struct pt_regs *)current->thread.esp0)
 #define current_user_stack_pointer() rdusp()
 #define task_pt_regs(task) \
 	((struct pt_regs *) (task_stack_page(task) + THREAD_SIZE) - 1)
