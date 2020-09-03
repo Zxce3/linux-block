@@ -103,4 +103,33 @@ struct krb5_enctype {
  */
 extern const struct krb5_enctype *crypto_krb5_find_enctype(u32 enctype);
 
+/*
+ * kdf.c
+ */
+extern void crypto_krb5_free_enc_keys(struct krb5_enc_keys *e);
+extern int crypto_krb5_calc_PRFplus(const struct krb5_enctype *krb5,
+				    const struct krb5_buffer *K,
+				    unsigned int L,
+				    const struct krb5_buffer *S,
+				    struct krb5_buffer *result,
+				    gfp_t gfp);
+extern int crypto_krb5_get_Kc(const struct krb5_enctype *krb5,
+			      const struct krb5_buffer *TK,
+			      u32 usage,
+			      struct krb5_buffer *key,
+			      struct crypto_shash **_shash,
+			      gfp_t gfp);
+extern int crypto_krb5_get_Ke(const struct krb5_enctype *krb5,
+			      const struct krb5_buffer *TK,
+			      u32 usage,
+			      struct krb5_buffer *key,
+			      struct crypto_sync_skcipher **_ci,
+			      gfp_t gfp);
+extern int crypto_krb5_get_Ki(const struct krb5_enctype *krb5,
+			      const struct krb5_buffer *TK,
+			      u32 usage,
+			      struct krb5_buffer *key,
+			      struct crypto_shash **_shash,
+			      gfp_t gfp);
+
 #endif /* _CRYPTO_KRB5_H */
