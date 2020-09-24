@@ -9,3 +9,7 @@ config CRYPTO_KRB5
 	select CRYPTO_AES
 	help
 	  Provide Kerberos-5-based security.
+
+config CRYPTO_KRB5_SELFTESTS
+	bool "Kerberos 5 crypto selftests"
+	depends on CRYPTO_KRB5
