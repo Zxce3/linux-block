@@ -12,6 +12,8 @@
 #ifndef _CRYPTO_KRB5_H
 #define _CRYPTO_KRB5_H
 
+#include <linux/crypto.h>
+
 struct crypto_shash;
 struct scatterlist;
 
@@ -103,6 +105,16 @@ struct krb5_enctype {
  */
 extern const struct krb5_enctype *crypto_krb5_find_enctype(u32 enctype);
 
+extern ssize_t crypto_krb5_encrypt(const struct krb5_enctype *krb5,
+				   struct krb5_enc_keys *keys,
+				   struct scatterlist *sg, unsigned nr_sg, size_t sg_len,
+				   size_t data_offset, size_t data_len,
+				   bool preconfounded);
+extern int crypto_krb5_decrypt(const struct krb5_enctype *krb5,
+			       struct krb5_enc_keys *keys,
+			       struct scatterlist *sg, unsigned nr_sg,
+			       size_t *_offset, size_t *_len,
+			       int *_error_code);
 /*
  * kdf.c
  */
