@@ -115,6 +115,18 @@ extern int crypto_krb5_decrypt(const struct krb5_enctype *krb5,
 			       struct scatterlist *sg, unsigned nr_sg,
 			       size_t *_offset, size_t *_len,
 			       int *_error_code);
+extern ssize_t crypto_krb5_get_mic(const struct krb5_enctype *krb5,
+				   struct crypto_shash *shash,
+				   const struct krb5_buffer *metadata,
+				   struct scatterlist *sg, unsigned nr_sg, size_t sg_len,
+				   size_t data_offset, size_t data_len);
+extern int crypto_krb5_verify_mic(const struct krb5_enctype *krb5,
+				  struct crypto_shash *shash,
+				  const struct krb5_buffer *metadata,
+				  struct scatterlist *sg, unsigned nr_sg,
+				  size_t *_offset, size_t *_len,
+				  int *_error_code);
+
 /*
  * kdf.c
  */
