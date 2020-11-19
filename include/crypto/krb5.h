@@ -17,6 +17,11 @@
 struct crypto_shash;
 struct scatterlist;
 
+enum krb5_crypto_mode {
+	KRB5_CHECKSUM_MODE,
+	KRB5_ENCRYPT_MODE,
+};
+
 /* per Kerberos v5 protocol spec crypto types from the wire.
  * these get mapped to linux kernel crypto routines.
  */
@@ -105,6 +110,12 @@ struct krb5_enctype {
  */
 extern const struct krb5_enctype *crypto_krb5_find_enctype(u32 enctype);
 
+extern size_t crypto_krb5_how_much_buffer(const struct krb5_enctype *krb5,
+					  enum krb5_crypto_mode mode, bool pad,
+					  size_t data_size, size_t *_offset);
+extern size_t crypto_krb5_how_much_data(const struct krb5_enctype *krb5,
+					enum krb5_crypto_mode mode, bool pad,
+					size_t *_buffer_size, size_t *_offset);
 extern ssize_t crypto_krb5_encrypt(const struct krb5_enctype *krb5,
 				   struct krb5_enc_keys *keys,
 				   struct scatterlist *sg, unsigned nr_sg, size_t sg_len,
