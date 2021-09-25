@@ -122,12 +122,12 @@ int copy_thread(unsigned long clone_flags, unsigned long new_stackp,
 	p->thread.last_break = 1;
 
 	frame->sf.back_chain = 0;
-	frame->sf.gprs[5] = (unsigned long)frame + sizeof(struct stack_frame);
-	frame->sf.gprs[6] = (unsigned long)p;
+	frame->sf.gprs[11 - 6] = (unsigned long)&frame->childregs;
+	frame->sf.gprs[12 - 6] = (unsigned long)p;
 	/* new return point is ret_from_fork */
-	frame->sf.gprs[8] = (unsigned long)ret_from_fork;
+	frame->sf.gprs[14 - 6] = (unsigned long)ret_from_fork;
 	/* fake return stack for resume(), don't go back to schedule */
-	frame->sf.gprs[9] = (unsigned long)frame;
+	frame->sf.gprs[15 - 6] = (unsigned long)frame;
 
 	/* Store access registers to kernel stack of new process. */
 	if (unlikely(p->flags & (PF_KTHREAD | PF_IO_WORKER))) {
@@ -135,11 +135,8 @@ int copy_thread(unsigned long clone_flags, unsigned long new_stackp,
 		memset(&frame->childregs, 0, sizeof(struct pt_regs));
 		frame->childregs.psw.mask = PSW_KERNEL_BITS | PSW_MASK_DAT |
 				PSW_MASK_IO | PSW_MASK_EXT | PSW_MASK_MCHECK;
-		frame->childregs.psw.addr =
-				(unsigned long)__ret_from_fork;
 		frame->childregs.gprs[9] = new_stackp; /* function */
 		frame->childregs.gprs[10] = arg;
-		frame->childregs.gprs[11] = (unsigned long)do_exit;
 		frame->childregs.orig_gpr2 = -1;
 
 		return 0;
