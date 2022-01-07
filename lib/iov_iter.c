@@ -21,9 +21,11 @@
 	size_t __maybe_unused off = 0;				\
 	len = n;						\
 	base = __p + i->iov_offset;				\
-	len -= (STEP);						\
-	i->iov_offset += len;					\
-	n = len;						\
+	do {							\
+		len -= (STEP);					\
+		i->iov_offset += len;				\
+		n = len;					\
+	} while (0);						\
 }
 
 /* covers iovec and kvec alike */
@@ -1610,6 +1612,64 @@ ssize_t extract_iter_to_iter(struct iov_iter *orig,
 	return npages;
 }
 EXPORT_SYMBOL(extract_iter_to_iter);
+
+/**
+ * iov_iter_scan - Scan a source iter
+ * @i: The iterator to scan
+ * @bytes: The amount of buffer/data to scan
+ * @scanner: The function to call to process each segment
+ * @priv: Private data to pass to the scanner function
+ *
+ * Scan an iterator, passing each segment to the scanner function.  If the
+ * scanner returns an error at any time, scanning stops and the error is
+ * returned, otherwise the sum of the scanner results is returned.
+ */
+ssize_t iov_iter_scan(struct iov_iter *i, size_t bytes,
+		      ssize_t (*scanner)(struct iov_iter *i, const void *p,
+					 size_t len, size_t off, void *priv),
+		      void *priv)
+{
+	unsigned int gup_flags = 0;
+	ssize_t ret = 0, scanned = 0;
+
+	if (!bytes)
+		return 0;
+	if (WARN_ON(iov_iter_is_discard(i)))
+		return 0;
+	if (iter_is_iovec(i))
+		might_fault();
+
+	if (iov_iter_rw(i) != WRITE)
+		gup_flags |= FOLL_WRITE;
+	if (i->nofault)
+		gup_flags |= FOLL_NOFAULT;
+
+	iterate_and_advance(
+		i, bytes, base, len, off, ({
+				struct page *page;
+				void *q;
+
+				ret = get_user_pages_fast((unsigned long)base, 1,
+							  gup_flags, &page);
+				if (ret < 0)
+					break;
+				q = kmap_local_page(page);
+				ret = scanner(i, q, len, off, priv);
+				kunmap_local(q);
+				put_page(page);
+				if (ret < 0)
+					break;
+				scanned += ret;
+			}), ({
+				ret = scanner(i, base, len, off, priv);
+				if (ret < 0)
+					break;
+				scanned += ret;
+			})
+	);
+	return ret < 0 ? ret : scanned;
+}
+EXPORT_SYMBOL(iov_iter_scan);
 
 size_t csum_and_copy_from_iter(void *addr, size_t bytes, __wsum *csum,
 			       struct iov_iter *i)
