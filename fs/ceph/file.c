@@ -1645,8 +1645,7 @@ again:
 
 		if (!ceph_has_inline_data(ci)) {
 			if (!retry_op && (iocb->ki_flags & IOCB_DIRECT)) {
-				ret = ceph_direct_read_write(iocb, to,
-							     NULL, NULL);
+				ret = netfs_direct_read_iter(iocb, to);
 				if (ret >= 0 && ret < len)
 					retry_op = CHECK_EOF;
 			} else {
