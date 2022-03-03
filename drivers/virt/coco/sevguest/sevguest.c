@@ -447,26 +447,25 @@ static int get_ext_report(struct snp_guest_dev *snp_dev, struct snp_guest_reques
 	if (copy_from_user(&req, (void __user *)arg->req_data, sizeof(req)))
 		return -EFAULT;
 
-	if (req.certs_len) {
-		if (req.certs_len > SEV_FW_BLOB_MAX_SIZE ||
-		    !IS_ALIGNED(req.certs_len, PAGE_SIZE))
-			return -EINVAL;
-	}
+	if (!req.certs_len || !req.certs_address)
+		return -EINVAL;
 
-	if (req.certs_address && req.certs_len) {
-		if (!access_ok(req.certs_address, req.certs_len))
-			return -EFAULT;
+	if (req.certs_len > SEV_FW_BLOB_MAX_SIZE ||
+	    !IS_ALIGNED(req.certs_len, PAGE_SIZE))
+		return -EINVAL;
 
-		/*
-		 * Initialize the intermediate buffer with all zeros. This buffer
-		 * is used in the guest request message to get the certs blob from
-		 * the host. If host does not supply any certs in it, then copy
-		 * zeros to indicate that certificate data was not provided.
-		 */
-		memset(snp_dev->certs_data, 0, req.certs_len);
+	if (!access_ok(req.certs_address, req.certs_len))
+		return -EFAULT;
 
-		npages = req.certs_len >> PAGE_SHIFT;
-	}
+	/*
+	 * Initialize the intermediate buffer with all zeros. This buffer
+	 * is used in the guest request message to get the certs blob from
+	 * the host. If host does not supply any certs in it, then copy
+	 * zeros to indicate that certificate data was not provided.
+	 */
+	memset(snp_dev->certs_data, 0, req.certs_len);
+
+	npages = req.certs_len >> PAGE_SHIFT;
 
 	/*
 	 * The intermediate response buffer is used while decrypting the
