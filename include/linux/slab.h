@@ -332,6 +332,8 @@ enum kmalloc_cache_type {
 extern struct kmem_cache *
 kmalloc_caches[NR_KMALLOC_TYPES][KMALLOC_SHIFT_HIGH + 1];
 
+unsigned int arch_kmalloc_minalign(void);
+
 /*
  * Define gfp bits that should not be set for KMALLOC_NORMAL.
  */
