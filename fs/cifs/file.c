@@ -4643,6 +4643,7 @@ const struct address_space_operations cifs_addr_ops = {
 	.direct_IO = cifs_direct_io,
 	.invalidate_folio = cifs_invalidate_folio,
 	.launder_folio = cifs_launder_folio,
+	.removing_folio	= netfs_removing_folio,
 	/*
 	 * TODO: investigate and if useful we could add an cifs_migratePage
 	 * helper (under an CONFIG_MIGRATION) in the future, and also
