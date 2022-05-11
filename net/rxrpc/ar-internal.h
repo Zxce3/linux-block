@@ -94,6 +94,19 @@ struct rxrpc_net {
 	struct list_head	peer_keepalive_new;
 	struct timer_list	peer_keepalive_timer;
 	struct work_struct	peer_keepalive_work;
+
+	atomic_t		stat_tx_ack_dequeue;
+	atomic_t		stat_tx_ack_fill;
+	atomic_t		stat_tx_ack_fill_retry;
+	atomic_t		stat_tx_ack_fill_weird;
+	atomic_t		stat_tx_ack_send;
+	atomic_t		stat_tx_ack_skip;
+	atomic_t		stat_tx_ack_transmitter;
+	atomic_t		stat_tx_data_dequeue;
+	atomic_t		stat_tx_data_send;
+	atomic_t		stat_tx_data_send_frag;
+	atomic_t		stat_tx_loop;
+	atomic_t		stat_tx_sleep;
 };
 
 /*
@@ -1131,6 +1144,14 @@ void rxrpc_eaten_skb(struct sk_buff *, enum rxrpc_skb_trace);
 void rxrpc_get_skb(struct sk_buff *, enum rxrpc_skb_trace);
 void rxrpc_free_skb(struct sk_buff *, enum rxrpc_skb_trace);
 void rxrpc_purge_queue(struct sk_buff_head *);
+
+/*
+ * stats.c
+ */
+int rxrpc_stats_show(struct seq_file *seq, void *v);
+
+#define rxrpc_inc_stat(rxnet, s) atomic_inc(&(rxnet)->s)
+#define rxrpc_dec_stat(rxnet, s) atomic_dec(&(rxnet)->s)
 
 /*
  * sysctl.c

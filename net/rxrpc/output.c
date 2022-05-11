@@ -87,8 +87,10 @@ static size_t rxrpc_fill_out_ack(struct rxrpc_connection *conn,
 	tmp = atomic_xchg(&call->ackr_nr_unacked, 0);
 	tmp |= atomic_xchg(&call->ackr_nr_consumed, 0);
 	if (!tmp && (txb->ack.reason == RXRPC_ACK_DELAY ||
-		     txb->ack.reason == RXRPC_ACK_IDLE))
+		     txb->ack.reason == RXRPC_ACK_IDLE)) {
+		rxrpc_inc_stat(call->rxnet, stat_tx_ack_skip);
 		return 0;
+	}
 
 	/* Barrier against rxrpc_input_data(). */
 retry:
@@ -98,6 +100,11 @@ retry:
 	txb->ack.previousPacket	= htonl(whigh);
 	if (before(whigh, hard_ack)) {
 		cond_resched();
+		if (hard_ack == READ_ONCE(call->rx_hard_ack)) {
+			rxrpc_inc_stat(call->rxnet, stat_tx_ack_fill_weird);
+			return 0;
+		}
+		rxrpc_inc_stat(call->rxnet, stat_tx_ack_fill_retry);
 		goto retry;
 	}
 	txb->ack.firstPacket	= htonl(window);
@@ -109,6 +116,7 @@ retry:
 		tmp = READ_ONCE(call->rx_hard_ack);
 		if (tmp != hard_ack) {
 			cond_resched();
+			rxrpc_inc_stat(call->rxnet, stat_tx_ack_fill_retry);
 			goto retry;
 		}
 
@@ -237,6 +245,7 @@ static int rxrpc_send_ack_packet(struct rxrpc_local *local, struct rxrpc_txbuf *
 	if (txb->ack.reason == RXRPC_ACK_PING)
 		rtt_slot = rxrpc_begin_rtt_probe(call, serial, rxrpc_rtt_tx_ping);
 
+	rxrpc_inc_stat(call->rxnet, stat_tx_ack_send);
 	iov_iter_kvec(&msg.msg_iter, WRITE, iov, 1, len);
 	ret = do_udp_sendmsg(conn->params.local->socket, &msg, len);
 	call->peer->last_tx_at = ktime_get_seconds();
@@ -270,6 +279,7 @@ void rxrpc_transmit_ack_packets(struct rxrpc_local *local)
 
 	trace_rxrpc_local(local->debug_id, rxrpc_local_tx_ack,
 			  refcount_read(&local->ref), NULL);
+	rxrpc_inc_stat(local->rxnet, stat_tx_ack_transmitter);
 
 	if (list_empty(&local->ack_tx_queue))
 		return;
@@ -281,6 +291,8 @@ void rxrpc_transmit_ack_packets(struct rxrpc_local *local)
 	while (!list_empty(&queue)) {
 		struct rxrpc_txbuf *txb =
 			list_entry(queue.next, struct rxrpc_txbuf, tx_link);
+
+		rxrpc_inc_stat(local->rxnet, stat_tx_ack_dequeue);
 
 		ret = rxrpc_send_ack_packet(local, txb);
 		if (ret < 0 && ret != -ECONNRESET) {
@@ -472,6 +484,7 @@ dont_set_request_ack:
 	 *   - in which case, we'll have processed the ICMP error
 	 *     message and update the peer record
 	 */
+	rxrpc_inc_stat(call->rxnet, stat_tx_data_send);
 	ret = do_udp_sendmsg(conn->params.local->socket, &msg, len);
 	conn->params.peer->last_tx_at = ktime_get_seconds();
 
@@ -545,6 +558,7 @@ send_fragmentable:
 	case AF_INET:
 		ip_sock_set_mtu_discover(conn->params.local->socket->sk,
 					 IP_PMTUDISC_DONT);
+		rxrpc_inc_stat(call->rxnet, stat_tx_data_send_frag);
 		ret = do_udp_sendmsg(conn->params.local->socket, &msg, len);
 		conn->params.peer->last_tx_at = ktime_get_seconds();
 
@@ -762,6 +776,8 @@ int rxrpc_transmitter(void *data)
 	set_user_nice(current, MIN_NICE);
 
 	for (;;) {
+		rxrpc_inc_stat(local->rxnet, stat_tx_loop);
+
 		spin_lock(&local->tx_lock);
 		txb = list_first_entry_or_null(&local->tx_re_queue,
 					       struct rxrpc_txbuf, tx_link);
@@ -770,6 +786,7 @@ int rxrpc_transmitter(void *data)
 						       struct rxrpc_txbuf, tx_link);
 		}
 		if (txb) {
+			rxrpc_inc_stat(local->rxnet, stat_tx_data_dequeue);
 			call = txb->call;
 			list_del_init(&txb->tx_link);
 			spin_unlock(&local->tx_lock);
@@ -790,6 +807,7 @@ int rxrpc_transmitter(void *data)
 			__set_current_state(TASK_RUNNING);
 			continue;
 		}
+		rxrpc_inc_stat(local->rxnet, stat_tx_sleep);
 		schedule();
 	}
 	__set_current_state(TASK_RUNNING);
