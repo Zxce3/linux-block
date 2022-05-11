@@ -399,3 +399,35 @@ const struct seq_operations rxrpc_local_seq_ops = {
 	.stop   = rxrpc_local_seq_stop,
 	.show   = rxrpc_local_seq_show,
 };
+
+/*
+ * Display stats in /proc/net/rxrpc/stats
+ */
+int rxrpc_stats_show(struct seq_file *seq, void *v)
+{
+	struct rxrpc_net *rxnet = rxrpc_net(seq_file_single_net(seq));
+
+	seq_printf(seq,
+		   "krxrpctxd: loop=%u sleep=%u\n",
+		   atomic_read(&rxnet->stat_tx_loop),
+		   atomic_read(&rxnet->stat_tx_sleep));
+	seq_printf(seq,
+		   "Data     : deq=%u send=%u sendf=%u\n",
+		   atomic_read(&rxnet->stat_tx_data_dequeue),
+		   atomic_read(&rxnet->stat_tx_data_send),
+		   atomic_read(&rxnet->stat_tx_data_send_frag));
+	seq_printf(seq,
+		   "Ack      : deq=%u fill=%u frtr=%u wrd=%u send=%u skip=%u tr=%u\n",
+		   atomic_read(&rxnet->stat_tx_ack_dequeue),
+		   atomic_read(&rxnet->stat_tx_ack_fill),
+		   atomic_read(&rxnet->stat_tx_ack_fill_retry),
+		   atomic_read(&rxnet->stat_tx_ack_fill_weird),
+		   atomic_read(&rxnet->stat_tx_ack_send),
+		   atomic_read(&rxnet->stat_tx_ack_skip),
+		   atomic_read(&rxnet->stat_tx_ack_transmitter));
+	seq_printf(seq,
+		   "Buffers  : txb=%u skb=%u\n",
+		   atomic_read(&rxrpc_nr_txbuf),
+		   atomic_read(&rxrpc_n_rx_skbs));
+	return 0;
+}
