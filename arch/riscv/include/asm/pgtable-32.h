@@ -33,4 +33,7 @@
 					  _PAGE_WRITE | _PAGE_EXEC |	\
 					  _PAGE_USER | _PAGE_GLOBAL))
 
+#define pgtable_l5_enabled() 0
+#define pgtable_l4_enabled() 0
+
 #endif /* _ASM_RISCV_PGTABLE_32_H */
