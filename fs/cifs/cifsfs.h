@@ -110,9 +110,12 @@ extern int cifs_file_strict_mmap(struct file * , struct vm_area_struct *);
 extern const struct file_operations cifs_dir_ops;
 extern int cifs_dir_open(struct inode *inode, struct file *file);
 extern int cifs_readdir(struct file *file, struct dir_context *ctx);
-extern void cifs_pages_written_back(struct inode *inode, loff_t start, unsigned int len);
-extern void cifs_pages_write_failed(struct inode *inode, loff_t start, unsigned int len);
-extern void cifs_pages_write_redirty(struct inode *inode, loff_t start, unsigned int len);
+extern void cifs_pages_written_back(struct inode *inode, loff_t start, unsigned int len,
+				    unsigned int wdata_debug_id);
+extern void cifs_pages_write_failed(struct inode *inode, loff_t start, unsigned int len,
+				    unsigned int wdata_debug_id);
+extern void cifs_pages_write_redirty(struct inode *inode, loff_t start, unsigned int len,
+				     unsigned int wdata_debug_id);
 
 /* Functions related to dir entries */
 extern const struct dentry_operations cifs_dentry_ops;

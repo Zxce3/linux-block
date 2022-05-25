@@ -2467,6 +2467,7 @@ static ssize_t cifs_write_back_from_locked_folio(struct address_space *mapping,
 		if (rc)
 			goto err_wdata;
 
+		trace_smb3_pages_write_back(inode, start, len, 0, wdata->debug_id);
 		if (wdata->cfile->invalidHandle)
 			rc = -EAGAIN;
 		else
@@ -2478,7 +2479,8 @@ static ssize_t cifs_write_back_from_locked_folio(struct address_space *mapping,
 		}
 	} else {
 		/* The dirty region was entirely beyond the EOF. */
-		cifs_pages_written_back(inode, start, len);
+		trace_smb3_pages_write_beyond(inode, start, len, rc, wdata->debug_id);
+		cifs_pages_written_back(inode, start, len, wdata->debug_id);
 		rc = 0;
 	}
 
@@ -2491,12 +2493,13 @@ err_close:
 		cifsFileInfo_put(cfile);
 err_xid:
 	free_xid(xid);
+	trace_smb3_pages_write_end(inode, start, len, rc, wdata->debug_id);
 	if (rc == 0) {
 		wbc->nr_to_write = count;
 	} else if (is_retryable_error(rc)) {
-		cifs_pages_write_redirty(inode, start, len);
+		cifs_pages_write_redirty(inode, start, len, wdata->debug_id);
 	} else {
-		cifs_pages_write_failed(inode, start, len);
+		cifs_pages_write_failed(inode, start, len, wdata->debug_id);
 		mapping_set_error(mapping, rc);
 	}
 	/* Indication to update ctime and mtime as close is deferred */
