@@ -3554,6 +3554,10 @@ static bool cifs_clamp_length(struct netfs_io_subrequest *subreq)
 
 	rdata->have_credits = true;
 	subreq->len = min_t(size_t, subreq->len, rsize);
+#ifdef CONFIG_CIFS_SMB_DIRECT
+	if (server->smbd_conn)
+		subreq->max_nr_segs = server->smbd_conn->max_frmr_depth;
+#endif
 	return true;
 }
 

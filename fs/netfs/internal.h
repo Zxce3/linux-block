@@ -23,7 +23,7 @@ void netfs_rreq_unlock_folios(struct netfs_io_request *rreq);
 /*
  * direct_read.c
  */
-int netfs_dio_copy_to_dest(struct netfs_io_request *rreq);
+int netfs_dio_copy_bounce_to_dest(struct netfs_io_request *rreq);
 
 /*
  * io.c
