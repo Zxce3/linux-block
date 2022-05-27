@@ -1700,24 +1700,32 @@ try_again:
 /*
  * Receive data from receive reassembly queue
  * All the incoming data packets are placed in reassembly queue
- * buf: the buffer to read data into
- * size: the length of data to read
+ * @msg: a msghdr point to the buffer
  * return value: actual data read
- * Note: this implementation copies the data from reassebmly queue to receive
+ *
+ * Note: this implementation copies the data from reassembly queue to receive
  * buffers used by upper layer. This is not the optimal code path. A better way
  * to do it is to not have upper layer allocate its receive buffers but rather
  * borrow the buffer from reassembly queue, and return it after data is
  * consumed. But this will require more changes to upper layer code, and also
  * need to consider packet boundaries while they still being reassembled.
  */
-static int smbd_recv_buf(struct smbd_connection *info, char *buf,
-		unsigned int size)
+int smbd_recv(struct smbd_connection *info, struct iov_iter *iter)
 {
 	struct smbd_response *response;
 	struct smbd_data_transfer *data_transfer;
-	int to_copy, to_read, data_read, offset;
+	int to_read = iov_iter_count(iter), data_read = 0, to_copy;
+	int offset = info->first_entry_offset;
 	u32 data_length, remaining_data_length, data_offset;
+	int queue_length, queue_removed = 0;
 	int rc;
+
+	if (iov_iter_rw(iter) == WRITE) {
+		/* It's a bug in upper layer to get there */
+		cifs_dbg(VFS, "Invalid msg iter dir %u\n",
+			 iov_iter_rw(iter));
+		return -EINVAL;
+	}
 
 again:
 	/*
@@ -1725,202 +1733,113 @@ again:
 	 * the only one reading from the front of the queue. The transport
 	 * may add more entries to the back of the queue at the same time
 	 */
-	log_read(INFO, "size=%d info->reassembly_data_length=%d\n", size,
-		info->reassembly_data_length);
-	if (info->reassembly_data_length >= size) {
-		int queue_length;
-		int queue_removed = 0;
+	log_read(INFO, "size=%zd info->reassembly_data_length=%d\n",
+		 iov_iter_count(iter), info->reassembly_data_length);
+	if (info->reassembly_data_length < iov_iter_count(iter)) {
+		log_read(INFO, "wait_event on more data\n");
+		rc = wait_event_interruptible(
+			info->wait_reassembly_queue,
+			info->reassembly_data_length >= iov_iter_count(iter) ||
+			info->transport_status != SMBD_CONNECTED);
+		/* Don't return any data if interrupted */
+		if (rc)
+			return rc;
 
-		/*
-		 * Need to make sure reassembly_data_length is read before
-		 * reading reassembly_queue_length and calling
-		 * _get_first_reassembly. This call is lock free
-		 * as we never read at the end of the queue which are being
-		 * updated in SOFTIRQ as more data is received
-		 */
-		virt_rmb();
-		queue_length = info->reassembly_queue_length;
-		data_read = 0;
-		to_read = size;
-		offset = info->first_entry_offset;
-		while (data_read < size) {
-			response = _get_first_reassembly(info);
-			data_transfer = smbd_response_payload(response);
-			data_length = le32_to_cpu(data_transfer->data_length);
-			remaining_data_length =
-				le32_to_cpu(
-					data_transfer->remaining_data_length);
-			data_offset = le32_to_cpu(data_transfer->data_offset);
-
-			/*
-			 * The upper layer expects RFC1002 length at the
-			 * beginning of the payload. Return it to indicate
-			 * the total length of the packet. This minimize the
-			 * change to upper layer packet processing logic. This
-			 * will be eventually remove when an intermediate
-			 * transport layer is added
-			 */
-			if (response->first_segment && size == 4) {
-				unsigned int rfc1002_len =
-					data_length + remaining_data_length;
-				*((__be32 *)buf) = cpu_to_be32(rfc1002_len);
-				data_read = 4;
-				response->first_segment = false;
-				log_read(INFO, "returning rfc1002 length %d\n",
-					rfc1002_len);
-				goto read_rfc1002_done;
-			}
-
-			to_copy = min_t(int, data_length - offset, to_read);
-			memcpy(
-				buf + data_read,
-				(char *)data_transfer + data_offset + offset,
-				to_copy);
-
-			/* move on to the next buffer? */
-			if (to_copy == data_length - offset) {
-				queue_length--;
-				/*
-				 * No need to lock if we are not at the
-				 * end of the queue
-				 */
-				if (queue_length)
-					list_del(&response->list);
-				else {
-					spin_lock_irq(
-						&info->reassembly_queue_lock);
-					list_del(&response->list);
-					spin_unlock_irq(
-						&info->reassembly_queue_lock);
-				}
-				queue_removed++;
-				info->count_reassembly_queue--;
-				info->count_dequeue_reassembly_queue++;
-				put_receive_buffer(info, response);
-				offset = 0;
-				log_read(INFO, "put_receive_buffer offset=0\n");
-			} else
-				offset += to_copy;
-
-			to_read -= to_copy;
-			data_read += to_copy;
-
-			log_read(INFO, "_get_first_reassembly memcpy %d bytes data_transfer_length-offset=%d after that to_read=%d data_read=%d offset=%d\n",
-				 to_copy, data_length - offset,
-				 to_read, data_read, offset);
+		if (info->transport_status != SMBD_CONNECTED) {
+			log_read(ERR, "disconnected\n");
+			return -ECONNABORTED;
 		}
 
-		spin_lock_irq(&info->reassembly_queue_lock);
-		info->reassembly_data_length -= data_read;
-		info->reassembly_queue_length -= queue_removed;
-		spin_unlock_irq(&info->reassembly_queue_lock);
+		goto again;
+	}
 
-		info->first_entry_offset = offset;
-		log_read(INFO, "returning to thread data_read=%d reassembly_data_length=%d first_entry_offset=%d\n",
-			 data_read, info->reassembly_data_length,
-			 info->first_entry_offset);
+	/*
+	 * Need to make sure reassembly_data_length is read before
+	 * reading reassembly_queue_length and calling
+	 * _get_first_reassembly. This call is lock free
+	 * as we never read at the end of the queue which are being
+	 * updated in SOFTIRQ as more data is received
+	 */
+	virt_rmb();
+	queue_length = info->reassembly_queue_length;
+
+
+	while (data_read < iov_iter_count(iter)) {
+		response = _get_first_reassembly(info);
+		data_transfer = smbd_response_payload(response);
+		data_length = le32_to_cpu(data_transfer->data_length);
+		remaining_data_length =
+			le32_to_cpu(data_transfer->remaining_data_length);
+		data_offset = le32_to_cpu(data_transfer->data_offset);
+
+		/*
+		 * The upper layer expects RFC1002 length at the
+		 * beginning of the payload.  Insert it to indicate
+		 * the total length of the packet. This minimizes the
+		 * change to upper layer packet processing logic. This
+		 * will be eventually remove when an intermediate
+		 * transport layer is added
+		 */
+		if (response->first_segment && iov_iter_count(iter) == 4) {
+			unsigned int rfc1002_len =
+				data_length + remaining_data_length;
+			__be32 tmp = cpu_to_be32(rfc1002_len);
+
+			_copy_to_iter(&tmp, 4, iter);
+			data_read = 4;
+			response->first_segment = false;
+			log_read(INFO, "returning rfc1002 length %d\n",
+				 rfc1002_len);
+			goto read_rfc1002_done;
+		}
+
+		to_copy = min_t(int, data_length - offset, to_read);
+		_copy_to_iter((char *)data_transfer + data_offset + offset,
+			      to_copy, iter);
+
+		/* move on to the next buffer? */
+		if (to_copy == data_length - offset) {
+			queue_length--;
+			/*
+			 * No need to lock if we are not at the
+			 * end of the queue
+			 */
+			if (queue_length)
+				list_del(&response->list);
+			else {
+				spin_lock_irq(&info->reassembly_queue_lock);
+				list_del(&response->list);
+				spin_unlock_irq(&info->reassembly_queue_lock);
+			}
+			queue_removed++;
+			info->count_reassembly_queue--;
+			info->count_dequeue_reassembly_queue++;
+			put_receive_buffer(info, response);
+			offset = 0;
+			log_read(INFO, "put_receive_buffer offset=0\n");
+		} else {
+			offset += to_copy;
+		}
+
+		to_read -= to_copy;
+		data_read += to_copy;
+
+		log_read(INFO, "_get_first_reassembly memcpy %d bytes data_transfer_length-offset=%d after that to_read=%d data_read=%d offset=%d\n",
+			 to_copy, data_length - offset,
+			 to_read, data_read, offset);
+	}
+
+	spin_lock_irq(&info->reassembly_queue_lock);
+	info->reassembly_data_length -= data_read;
+	info->reassembly_queue_length -= queue_removed;
+	spin_unlock_irq(&info->reassembly_queue_lock);
+
+	info->first_entry_offset = offset;
+	log_read(INFO, "returning to thread data_read=%d reassembly_data_length=%d first_entry_offset=%d\n",
+		 data_read, info->reassembly_data_length,
+		 info->first_entry_offset);
 read_rfc1002_done:
-		return data_read;
-	}
-
-	log_read(INFO, "wait_event on more data\n");
-	rc = wait_event_interruptible(
-		info->wait_reassembly_queue,
-		info->reassembly_data_length >= size ||
-			info->transport_status != SMBD_CONNECTED);
-	/* Don't return any data if interrupted */
-	if (rc)
-		return rc;
-
-	if (info->transport_status != SMBD_CONNECTED) {
-		log_read(ERR, "disconnected\n");
-		return -ECONNABORTED;
-	}
-
-	goto again;
-}
-
-/*
- * Receive a page from receive reassembly queue
- * page: the page to read data into
- * to_read: the length of data to read
- * return value: actual data read
- */
-static int smbd_recv_page(struct smbd_connection *info,
-		struct page *page, unsigned int page_offset,
-		unsigned int to_read)
-{
-	int ret;
-	char *to_address;
-	void *page_address;
-
-	/* make sure we have the page ready for read */
-	ret = wait_event_interruptible(
-		info->wait_reassembly_queue,
-		info->reassembly_data_length >= to_read ||
-			info->transport_status != SMBD_CONNECTED);
-	if (ret)
-		return ret;
-
-	/* now we can read from reassembly queue and not sleep */
-	page_address = kmap_atomic(page);
-	to_address = (char *) page_address + page_offset;
-
-	log_read(INFO, "reading from page=%p address=%p to_read=%d\n",
-		page, to_address, to_read);
-
-	ret = smbd_recv_buf(info, to_address, to_read);
-	kunmap_atomic(page_address);
-
-	return ret;
-}
-
-/*
- * Receive data from transport
- * msg: a msghdr point to the buffer, can be ITER_KVEC or ITER_BVEC
- * return: total bytes read, or 0. SMB Direct will not do partial read.
- */
-int smbd_recv(struct smbd_connection *info, struct msghdr *msg)
-{
-	char *buf;
-	struct page *page;
-	unsigned int to_read, page_offset;
-	int rc;
-
-	if (iov_iter_rw(&msg->msg_iter) == WRITE) {
-		/* It's a bug in upper layer to get there */
-		cifs_dbg(VFS, "Invalid msg iter dir %u\n",
-			 iov_iter_rw(&msg->msg_iter));
-		rc = -EINVAL;
-		goto out;
-	}
-
-	switch (iov_iter_type(&msg->msg_iter)) {
-	case ITER_KVEC:
-		buf = msg->msg_iter.kvec->iov_base;
-		to_read = msg->msg_iter.kvec->iov_len;
-		rc = smbd_recv_buf(info, buf, to_read);
-		break;
-
-	case ITER_BVEC:
-		page = msg->msg_iter.bvec->bv_page;
-		page_offset = msg->msg_iter.bvec->bv_offset;
-		to_read = msg->msg_iter.bvec->bv_len;
-		rc = smbd_recv_page(info, page, page_offset, to_read);
-		break;
-
-	default:
-		/* It's a bug in upper layer to get there */
-		cifs_dbg(VFS, "Invalid msg type %d\n",
-			 iov_iter_type(&msg->msg_iter));
-		rc = -EINVAL;
-	}
-
-out:
-	/* SMBDirect will read it all or nothing */
-	if (rc > 0)
-		msg->msg_iter.count = 0;
-	return rc;
+	return data_read;
 }
 
 struct smbd_post_send_iter_context {

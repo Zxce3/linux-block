@@ -686,7 +686,7 @@ cifs_readv_from_socket(struct TCP_Server_Info *server, struct msghdr *smb_msg)
 		if (server_unresponsive(server))
 			return -ECONNABORTED;
 		if (cifs_rdma_enabled(server) && server->smbd_conn)
-			length = smbd_recv(server->smbd_conn, smb_msg);
+			length = smbd_recv(server->smbd_conn, &smb_msg->msg_iter);
 		else
 			length = sock_recvmsg(server->ssocket, smb_msg, 0);
 
@@ -750,17 +750,6 @@ cifs_discard_from_socket(struct TCP_Server_Info *server, size_t to_read)
 	smb_msg.msg_namelen = 0;
 	iov_iter_discard(&smb_msg.msg_iter, READ, to_read);
 
-	return cifs_readv_from_socket(server, &smb_msg);
-}
-
-int
-cifs_read_page_from_socket(struct TCP_Server_Info *server, struct page *page,
-	unsigned int page_offset, unsigned int to_read)
-{
-	struct msghdr smb_msg;
-	struct bio_vec bv = {
-		.bv_page = page, .bv_len = to_read, .bv_offset = page_offset};
-	iov_iter_bvec(&smb_msg.msg_iter, READ, &bv, 1, to_read);
 	return cifs_readv_from_socket(server, &smb_msg);
 }
 

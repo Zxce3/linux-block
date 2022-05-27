@@ -4192,12 +4192,27 @@ smb2_readv_callback(struct mid_q_entry *mid)
 		/* We may have got an EOF error because fallocate
 		 * failed to enlarge the file.
 		 */
-		if (rdata->subreq.start < rdata->subreq.rreq->i_size)
+		if (rdata->subreq.start < rdata->subreq.rreq->i_size) {
+			//printk("under-enlarged %llx < %llx [iter %zx]\n",
+			//       rdata->subreq.start, rdata->subreq.rreq->i_size,
+			//       iov_iter_count(&rdata->subreq.iter));
 			rdata->result = 0;
+			rdata->got_bytes = rdata->subreq.len;
+			iov_iter_revert(&rdata->subreq.iter,
+					rdata->subreq.len - iov_iter_count(&rdata->subreq.iter));
+			//printk("revert %zu\n", iov_iter_count(&rdata->subreq.iter));
+			iov_iter_zero(rdata->subreq.len - rdata->subreq.transferred,
+				      &rdata->subreq.iter);
+			goto out;
+		}
 	}
-	if (rdata->result == 0 || rdata->result == -EAGAIN)
+	if (rdata->result == 0 || rdata->result == -EAGAIN) {
+		//printk("advance %zd\n", rdata->got_bytes);
 		iov_iter_advance(&rdata->subreq.iter, rdata->got_bytes);
+	}
+out:
 	rdata->have_credits = false;
+	//printk("smb2_readv_callback gb=%zu res=%d\n", rdata->got_bytes, rdata->result);
 	netfs_subreq_terminated(&rdata->subreq,
 				(rdata->result == 0 || rdata->result == -EAGAIN) ?
 				rdata->got_bytes : rdata->result, true);

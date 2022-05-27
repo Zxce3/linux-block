@@ -1613,6 +1613,7 @@ cifs_readv_callback(struct mid_q_entry *mid)
 
 	if (rdata->result == 0 || rdata->result == -EAGAIN)
 		iov_iter_advance(&rdata->subreq.iter, rdata->got_bytes);
+	printk("cifs_readv_callback\n");
 	netfs_subreq_terminated(&rdata->subreq,
 				(rdata->result == 0 || rdata->result == -EAGAIN) ?
 				rdata->got_bytes : rdata->result,

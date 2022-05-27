@@ -240,10 +240,6 @@ extern int cifs_read_from_socket(struct TCP_Server_Info *server, char *buf,
 			         unsigned int to_read);
 extern ssize_t cifs_discard_from_socket(struct TCP_Server_Info *server,
 					size_t to_read);
-extern int cifs_read_page_from_socket(struct TCP_Server_Info *server,
-					struct page *page,
-					unsigned int page_offset,
-					unsigned int to_read);
 extern int cifs_setup_cifs_sb(struct cifs_sb_info *cifs_sb);
 extern int cifs_read_iter_from_socket(struct TCP_Server_Info *server,
 				      struct iov_iter *iter,
