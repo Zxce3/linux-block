@@ -1959,8 +1959,7 @@ static void cifs_undirty_folios(struct inode *inode, loff_t start, unsigned int 
 /*
  * Completion of write to server.
  */
-void cifs_pages_written_back(struct inode *inode, loff_t start, unsigned int len,
-			     unsigned int wdata_debug_id)
+void cifs_pages_written_back(struct inode *inode, loff_t start, unsigned int len)
 {
 	struct address_space *mapping = inode->i_mapping;
 	struct folio *folio;
@@ -1971,14 +1970,11 @@ void cifs_pages_written_back(struct inode *inode, loff_t start, unsigned int len
 	if (!len)
 		return;
 
-	trace_smb3_pages_written_back(inode, start, len, 0, wdata_debug_id);
-
 	rcu_read_lock();
 
 	end = (start + len - 1) / PAGE_SIZE;
 	xas_for_each(&xas, folio, end) {
 		if (!folio_test_writeback(folio)) {
-			trace_smb3_pages_write_bad(inode, start, len, 0, wdata_debug_id);
 			WARN_ONCE(1, "bad %x @%llx page %lx %lx\n",
 				  len, start, folio_index(folio), end);
 			continue;
@@ -1994,8 +1990,7 @@ void cifs_pages_written_back(struct inode *inode, loff_t start, unsigned int len
 /*
  * Failure of write to server.
  */
-void cifs_pages_write_failed(struct inode *inode, loff_t start, unsigned int len,
-			     unsigned int wdata_debug_id)
+void cifs_pages_write_failed(struct inode *inode, loff_t start, unsigned int len)
 {
 	struct address_space *mapping = inode->i_mapping;
 	struct folio *folio;
@@ -2006,14 +2001,11 @@ void cifs_pages_write_failed(struct inode *inode, loff_t start, unsigned int len
 	if (!len)
 		return;
 
-	trace_smb3_pages_write_failed(inode, start, len, 0, wdata_debug_id);
-
 	rcu_read_lock();
 
 	end = (start + len - 1) / PAGE_SIZE;
 	xas_for_each(&xas, folio, end) {
 		if (!folio_test_writeback(folio)) {
-			trace_smb3_pages_write_bad(inode, start, len, 0, wdata_debug_id);
 			WARN_ONCE(1, "bad %x @%llx page %lx %lx\n",
 				  len, start, folio_index(folio), end);
 			continue;
@@ -2029,8 +2021,7 @@ void cifs_pages_write_failed(struct inode *inode, loff_t start, unsigned int len
 /*
  * Redirty pages after a temporary failure.
  */
-void cifs_pages_write_redirty(struct inode *inode, loff_t start, unsigned int len,
-			      unsigned int wdata_debug_id)
+void cifs_pages_write_redirty(struct inode *inode, loff_t start, unsigned int len)
 {
 	struct address_space *mapping = inode->i_mapping;
 	struct folio *folio;
@@ -2041,14 +2032,11 @@ void cifs_pages_write_redirty(struct inode *inode, loff_t start, unsigned int le
 	if (!len)
 		return;
 
-	trace_smb3_pages_write_redirty(inode, start, len, 0, wdata_debug_id);
-
 	rcu_read_lock();
 
 	end = (start + len - 1) / PAGE_SIZE;
 	xas_for_each(&xas, folio, end) {
 		if (!folio_test_writeback(folio)) {
-			trace_smb3_pages_write_bad(inode, start, len, 0, wdata_debug_id);
 			WARN_ONCE(1, "bad %x @%llx page %lx %lx\n",
 				  len, start, folio_index(folio), end);
 			continue;
@@ -2121,16 +2109,9 @@ cifs_writev_requeue(struct cifs_writedata *wdata)
 				rc = -EBADF;
 		} else {
 			wdata2->pid = wdata2->cfile->pid;
-
-			trace_smb3_pages_write_requeue(inode, fpos, cur_len,
-						       wdata->debug_id,
-						       wdata2->debug_id);
 			rc = server->ops->async_writev(wdata2,
 						       cifs_writedata_release);
 		}
-
-		trace_smb3_pages_write_done(inode, wdata->offset, wdata->bytes,
-					    rc, wdata2->debug_id);
 
 		kref_put(&wdata2->refcount, cifs_writedata_release);
 		if (rc) {
@@ -2146,10 +2127,8 @@ cifs_writev_requeue(struct cifs_writedata *wdata)
 	} while (rest_len > 0);
 
 	/* Clean up remaining pages from the original wdata */
-	if (iov_iter_is_xarray(&wdata->iter)) {
-		trace_smb3_pages_write_cleanup(inode, fpos, rest_len, rc, wdata->debug_id);
-		cifs_pages_write_failed(inode, fpos, rest_len, wdata->debug_id);
-	}
+	if (iov_iter_is_xarray(&wdata->iter))
+		cifs_pages_write_failed(inode, fpos, rest_len);
 
 	if (rc != 0 && !is_retryable_error(rc))
 		mapping_set_error(inode->i_mapping, rc);
@@ -2163,9 +2142,6 @@ cifs_writev_complete(struct work_struct *work)
 						struct cifs_writedata, work);
 	struct inode *inode = d_inode(wdata->cfile->dentry);
 
-	trace_smb3_pages_writev_complete(inode, wdata->offset, wdata->bytes, wdata->result,
-					 wdata->debug_id);
-
 	if (wdata->result == 0) {
 		spin_lock(&inode->i_lock);
 		cifs_update_eof(CIFS_I(inode), wdata->offset, wdata->bytes);
@@ -2175,22 +2151,17 @@ cifs_writev_complete(struct work_struct *work)
 	} else if (wdata->sync_mode == WB_SYNC_ALL && wdata->result == -EAGAIN)
 		return cifs_writev_requeue(wdata);
 
-
-	trace_smb3_pages_write_complete(inode, wdata->offset, wdata->bytes,
-					wdata->result, wdata->debug_id);
 	if (wdata->result == -EAGAIN)
-		cifs_pages_write_redirty(inode, wdata->offset, wdata->bytes, wdata->debug_id);
+		cifs_pages_write_redirty(inode, wdata->offset, wdata->bytes);
 	else if (wdata->result < 0)
-		cifs_pages_write_failed(inode, wdata->offset, wdata->bytes, wdata->debug_id);
+		cifs_pages_write_failed(inode, wdata->offset, wdata->bytes);
 	else
-		cifs_pages_written_back(inode, wdata->offset, wdata->bytes, wdata->debug_id);
+		cifs_pages_written_back(inode, wdata->offset, wdata->bytes);
 
 	if (wdata->result != -EAGAIN)
 		mapping_set_error(inode->i_mapping, wdata->result);
 	kref_put(&wdata->refcount, cifs_writedata_release);
 }
-
-static atomic_t cifs_writedata_debug_counter;
 
 struct cifs_writedata *
 cifs_writedata_alloc(work_func_t complete)
@@ -2203,7 +2174,6 @@ cifs_writedata_alloc(work_func_t complete)
 		INIT_LIST_HEAD(&wdata->list);
 		init_completion(&wdata->done);
 		INIT_WORK(&wdata->work, complete);
-		wdata->debug_id = atomic_inc_return(&cifs_writedata_debug_counter);
 	}
 	return wdata;
 }
