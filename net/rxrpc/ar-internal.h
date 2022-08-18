@@ -102,12 +102,17 @@ struct rxrpc_net {
 	atomic_t		stat_tx_ack_send;
 	atomic_t		stat_tx_ack_skip;
 	atomic_t		stat_tx_ack_transmitter;
+	atomic_t		stat_tx_data;
+	atomic_t		stat_tx_data_retrans;
 	atomic_t		stat_tx_data_dequeue;
 	atomic_t		stat_tx_data_send;
 	atomic_t		stat_tx_data_send_frag;
 	atomic_t		stat_tx_loop;
 	atomic_t		stat_tx_sleep;
 	atomic_t		stat_tx_acks[256];
+	atomic_t		stat_rx_data;
+	atomic_t		stat_rx_data_reqack;
+	atomic_t		stat_rx_data_jumbo;
 	atomic_t		stat_rx_acks[256];
 	atomic_t		stat_why_req_ack[8];
 };

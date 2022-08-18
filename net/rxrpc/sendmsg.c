@@ -193,6 +193,8 @@ static void rxrpc_queue_packet(struct rxrpc_sock *rx, struct rxrpc_call *call,
 	rxrpc_seq_t seq = txb->seq;
 	bool last = test_bit(RXRPC_TXBUF_LAST, &txb->flags);
 
+	rxrpc_inc_stat(call->rxnet, stat_tx_data);
+
 	ASSERTCMP(seq, ==, call->tx_top + 1);
 
 	/* We have to set the timestamp before queueing as the retransmit
