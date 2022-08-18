@@ -107,6 +107,8 @@ struct rxrpc_net {
 	atomic_t		stat_tx_data_send_frag;
 	atomic_t		stat_tx_loop;
 	atomic_t		stat_tx_sleep;
+	atomic_t		stat_tx_acks[256];
+	atomic_t		stat_rx_acks[256];
 };
 
 /*

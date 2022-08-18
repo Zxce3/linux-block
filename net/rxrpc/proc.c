@@ -426,6 +426,28 @@ int rxrpc_stats_show(struct seq_file *seq, void *v)
 		   atomic_read(&rxnet->stat_tx_ack_skip),
 		   atomic_read(&rxnet->stat_tx_ack_transmitter));
 	seq_printf(seq,
+		   "Ack-Tx   : req=%u dup=%u oos=%u exw=%u nos=%u png=%u prs=%u dly=%u idl=%u\n",
+		   atomic_read(&rxnet->stat_tx_acks[RXRPC_ACK_REQUESTED]),
+		   atomic_read(&rxnet->stat_tx_acks[RXRPC_ACK_DUPLICATE]),
+		   atomic_read(&rxnet->stat_tx_acks[RXRPC_ACK_OUT_OF_SEQUENCE]),
+		   atomic_read(&rxnet->stat_tx_acks[RXRPC_ACK_EXCEEDS_WINDOW]),
+		   atomic_read(&rxnet->stat_tx_acks[RXRPC_ACK_NOSPACE]),
+		   atomic_read(&rxnet->stat_tx_acks[RXRPC_ACK_PING]),
+		   atomic_read(&rxnet->stat_tx_acks[RXRPC_ACK_PING_RESPONSE]),
+		   atomic_read(&rxnet->stat_tx_acks[RXRPC_ACK_DELAY]),
+		   atomic_read(&rxnet->stat_tx_acks[RXRPC_ACK_IDLE]));
+	seq_printf(seq,
+		   "Ack-Rx   : req=%u dup=%u oos=%u exw=%u nos=%u png=%u prs=%u dly=%u idl=%u\n",
+		   atomic_read(&rxnet->stat_rx_acks[RXRPC_ACK_REQUESTED]),
+		   atomic_read(&rxnet->stat_rx_acks[RXRPC_ACK_DUPLICATE]),
+		   atomic_read(&rxnet->stat_rx_acks[RXRPC_ACK_OUT_OF_SEQUENCE]),
+		   atomic_read(&rxnet->stat_rx_acks[RXRPC_ACK_EXCEEDS_WINDOW]),
+		   atomic_read(&rxnet->stat_rx_acks[RXRPC_ACK_NOSPACE]),
+		   atomic_read(&rxnet->stat_rx_acks[RXRPC_ACK_PING]),
+		   atomic_read(&rxnet->stat_rx_acks[RXRPC_ACK_PING_RESPONSE]),
+		   atomic_read(&rxnet->stat_rx_acks[RXRPC_ACK_DELAY]),
+		   atomic_read(&rxnet->stat_rx_acks[RXRPC_ACK_IDLE]));
+	seq_printf(seq,
 		   "Buffers  : txb=%u skb=%u\n",
 		   atomic_read(&rxrpc_nr_txbuf),
 		   atomic_read(&rxrpc_n_rx_skbs));
