@@ -202,6 +202,7 @@ static void rxrpc_resend(struct rxrpc_call *call, unsigned long now_j)
 				rxrpc_get_call(call, rxrpc_call_got_tx);
 				list_add_tail(&txb->tx_link, &retrans_queue);
 				set_bit(RXRPC_TXBUF_RESENT, &txb->flags);
+				rxrpc_inc_stat(call->rxnet, stat_tx_data_retrans);
 			}
 
 			trace_rxrpc_retransmit(call, txb->seq,
