@@ -80,6 +80,8 @@ void rxrpc_send_ACK(struct rxrpc_call *call, u8 ack_reason,
 		return;
 	}
 
+	rxrpc_inc_stat(call->rxnet, stat_tx_acks[ack_reason]);
+
 	txb = rxrpc_alloc_txbuf(call, RXRPC_PACKET_TYPE_ACK,
 				in_softirq() ? GFP_ATOMIC | __GFP_NOWARN : GFP_NOFS);
 	if (!txb) {
