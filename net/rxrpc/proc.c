@@ -417,6 +417,15 @@ int rxrpc_stats_show(struct seq_file *seq, void *v)
 		   atomic_read(&rxnet->stat_tx_data_send),
 		   atomic_read(&rxnet->stat_tx_data_send_frag));
 	seq_printf(seq,
+		   "Data-Tx  : nr=%u retrans=%u\n",
+		   atomic_read(&rxnet->stat_tx_data),
+		   atomic_read(&rxnet->stat_tx_data_retrans));
+	seq_printf(seq,
+		   "Data-Rx  : nr=%u reqack=%u jumbo=%u\n",
+		   atomic_read(&rxnet->stat_rx_data),
+		   atomic_read(&rxnet->stat_rx_data_reqack),
+		   atomic_read(&rxnet->stat_rx_data_jumbo));
+	seq_printf(seq,
 		   "Ack      : deq=%u fill=%u frtr=%u wrd=%u send=%u skip=%u tr=%u\n",
 		   atomic_read(&rxnet->stat_tx_ack_dequeue),
 		   atomic_read(&rxnet->stat_tx_ack_fill),
