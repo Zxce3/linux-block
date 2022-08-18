@@ -109,6 +109,7 @@ struct rxrpc_net {
 	atomic_t		stat_tx_sleep;
 	atomic_t		stat_tx_acks[256];
 	atomic_t		stat_rx_acks[256];
+	atomic_t		stat_why_req_ack[8];
 };
 
 /*

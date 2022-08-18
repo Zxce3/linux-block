@@ -447,6 +447,18 @@ int rxrpc_stats_show(struct seq_file *seq, void *v)
 		   atomic_read(&rxnet->stat_rx_acks[RXRPC_ACK_DELAY]),
 		   atomic_read(&rxnet->stat_rx_acks[RXRPC_ACK_IDLE]));
 	seq_printf(seq,
+		   "Why-Req-A: acklost=%u already=%u mrtt=%u ortt=%u\n",
+		   atomic_read(&rxnet->stat_why_req_ack[rxrpc_reqack_ack_lost]),
+		   atomic_read(&rxnet->stat_why_req_ack[rxrpc_reqack_already_on]),
+		   atomic_read(&rxnet->stat_why_req_ack[rxrpc_reqack_more_rtt]),
+		   atomic_read(&rxnet->stat_why_req_ack[rxrpc_reqack_old_rtt]));
+	seq_printf(seq,
+		   "Why-Req-A: nolast=%u retx=%u slows=%u smtxw=%u\n",
+		   atomic_read(&rxnet->stat_why_req_ack[rxrpc_reqack_no_srv_last]),
+		   atomic_read(&rxnet->stat_why_req_ack[rxrpc_reqack_retrans]),
+		   atomic_read(&rxnet->stat_why_req_ack[rxrpc_reqack_slow_start]),
+		   atomic_read(&rxnet->stat_why_req_ack[rxrpc_reqack_small_txwin]));
+	seq_printf(seq,
 		   "Buffers  : txb=%u skb=%u\n",
 		   atomic_read(&rxrpc_nr_txbuf),
 		   atomic_read(&rxrpc_n_rx_skbs));
