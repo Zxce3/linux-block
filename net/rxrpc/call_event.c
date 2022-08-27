@@ -93,7 +93,7 @@ void rxrpc_send_ACK(struct rxrpc_call *call, u8 ack_reason,
 	txb->wire.seq		= 0;
 	txb->wire.type		= RXRPC_PACKET_TYPE_ACK;
 	txb->wire.flags		|= RXRPC_SLOW_START_OK;
-	txb->ack.bufferSpace	= htons(8);
+	txb->ack.bufferSpace	= 0;
 	txb->ack.maxSkew	= 0;
 	txb->ack.firstPacket	= 0;
 	txb->ack.previousPacket	= 0;

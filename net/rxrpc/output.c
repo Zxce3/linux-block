@@ -78,7 +78,7 @@ static size_t rxrpc_fill_out_ack(struct rxrpc_connection *conn,
 {
 	struct rxrpc_ackinfo ackinfo;
 	unsigned int tmp, qsize;
-	rxrpc_seq_t hard_ack, window, whigh, ix;
+	rxrpc_seq_t hard_ack, window, whigh, ix, first;
 	int rsize;
 	u32 mtu, jmax;
 	u8 *ackp = txb->acks;
@@ -111,7 +111,7 @@ retry:
 	txb->ack.nAcks		= whigh - (window - 1);
 
 	if (txb->ack.nAcks) {
-		/* Try to copy the SACK table locklessly. */
+		/* Try to copy the SACK ring locklessly. */
 		memcpy(sack_buffer, call->ackr_sack_table, sizeof(sack_buffer));
 		tmp = READ_ONCE(call->rx_hard_ack);
 		if (tmp != hard_ack) {
@@ -125,10 +125,17 @@ retry:
 		 * need to rotate it.
 		 */
 		ix = window % RXRPC_SACK_SIZE;
-		memcpy(txb->acks, sack_buffer + ix, sizeof(sack_buffer) - ix);
-		if (ix > 0)
-			memcpy(txb->acks + ix, sack_buffer, ix);
+		first = sizeof(sack_buffer) - ix;
 
+		if (ix + txb->ack.nAcks <= RXRPC_SACK_SIZE) {
+			memcpy(txb->acks, sack_buffer + ix, txb->ack.nAcks);
+		} else {
+			memcpy(txb->acks, sack_buffer + ix, first);
+			memcpy(txb->acks + first, sack_buffer,
+			       txb->ack.nAcks - first);
+		}
+
+		ackp += txb->ack.nAcks;
 	} else if (txb->ack.reason == RXRPC_ACK_DELAY) {
 		txb->ack.reason = RXRPC_ACK_IDLE;
 	}

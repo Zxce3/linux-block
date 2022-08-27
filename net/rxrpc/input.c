@@ -478,9 +478,6 @@ static void rxrpc_input_data_sub(struct rxrpc_call *call, struct sk_buff *skb)
 		goto send_ack;
 	}
 
-	if (after(tseq, whigh))
-		smp_store_release(&call->ackr_highest_seq, tseq);
-
 	/* Queue the packet. */
 	if (before_eq(seq, window)) {
 		/* Send an immediate ACK if we fill in a hole */
@@ -512,6 +509,9 @@ static void rxrpc_input_data_sub(struct rxrpc_call *call, struct sk_buff *skb)
 			window = tseq + 1;
 		}
 
+		if (after(tseq, whigh))
+			smp_store_release(&call->ackr_highest_seq, tseq);
+
 		spin_unlock(&call->rx_queue.lock);
 	} else {
 		bool keep = false;
@@ -523,6 +523,9 @@ static void rxrpc_input_data_sub(struct rxrpc_call *call, struct sk_buff *skb)
 				keep = 1;
 			}
 		} while (s++, before_eq(s, tseq));
+
+		if (after(tseq, whigh))
+			smp_store_release(&call->ackr_highest_seq, tseq);
 
 		if (!keep) {
 			rxrpc_input_dup_data(call, seq, nr_sub > 1, &jumbo_bad);
