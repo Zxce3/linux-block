@@ -1893,7 +1893,7 @@ static int s3c2410_udc_remove(struct platform_device *pdev)
 		return -EBUSY;
 
 	usb_del_gadget_udc(&udc->gadget);
-	debugfs_remove(debugfs_lookup("registers", s3c2410_udc_debugfs_root));
+	debugfs_lookup_and_remove("registers", s3c2410_udc_debugfs_root);
 
 	if (udc_info && !udc_info->udc_command &&
 		gpio_is_valid(udc_info->pullup_pin))
