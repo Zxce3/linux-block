@@ -78,11 +78,11 @@ static size_t rxrpc_fill_out_ack(struct rxrpc_connection *conn,
 {
 	struct rxrpc_ackinfo ackinfo;
 	unsigned int tmp, qsize;
-	rxrpc_seq_t window, whigh, ix, first;
+	rxrpc_seq_t window, whigh, wlimit, ix, first;
 	int rsize;
 	u32 mtu, jmax;
 	u8 *ackp = txb->acks;
-	u8 sack_buffer[sizeof(call->ackr_sack_table)];
+	u8 sack_buffer[sizeof(call->ackr_sack_table)] __aligned(8);
 
 	tmp = atomic_xchg(&call->ackr_nr_unacked, 0);
 	tmp |= atomic_xchg(&call->ackr_nr_consumed, 0);
@@ -100,6 +100,7 @@ retry:
 	if (before(whigh + 1, window)) {
 		cond_resched();
 		if (window == READ_ONCE(call->ackr_window)) {
+			kdebug("weird %x %x", window, whigh);
 			rxrpc_inc_stat(call->rxnet, stat_tx_ack_fill_weird);
 			return 0;
 		}
@@ -110,10 +111,16 @@ retry:
 	txb->ack.nAcks		= whigh - (window - 1);
 
 	if (txb->ack.nAcks) {
-		/* Try to copy the SACK ring locklessly. */
+		/* Try to copy the SACK ring locklessly.  We can use the copy,
+		 * only if the now-current top of the window didn't go past the
+		 * previously read base - otherwise we can't know whether we
+		 * have old data or new data.
+		 */
 		memcpy(sack_buffer, call->ackr_sack_table, sizeof(sack_buffer));
-		tmp = READ_ONCE(call->ackr_window);
-		if (tmp != window) {
+		wlimit = window + RXRPC_SACK_SIZE - 1;
+		window = READ_ONCE(call->ackr_window);
+		whigh = smp_load_acquire(&call->ackr_highest_seq);
+		if (after(whigh, wlimit)) {
 			cond_resched();
 			rxrpc_inc_stat(call->rxnet, stat_tx_ack_fill_retry);
 			goto retry;

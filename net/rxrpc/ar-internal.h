@@ -678,9 +678,10 @@ struct rxrpc_call {
 	atomic_t		ackr_nr_unacked; /* Number of unacked packets */
 	atomic_t		ackr_nr_consumed; /* Number of packets needing hard ACK */
 	struct {
-		u8		ackr_sack_table[256]; /* SACK table for soft-acked packets */
-	} __aligned(8);
 #define RXRPC_SACK_SIZE 256
+		 /* SACK table for soft-acked packets */
+		u8		ackr_sack_table[RXRPC_SACK_SIZE];
+	} __aligned(8);
 
 	/* RTT management */
 	rxrpc_serial_t		rtt_serial[4];	/* Serial number of DATA or PING sent */
