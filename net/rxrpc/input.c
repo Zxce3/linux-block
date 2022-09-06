@@ -398,7 +398,7 @@ static void rxrpc_input_queue_data(struct rxrpc_call *call, struct sk_buff *skb,
 	bool last = sp->flags & RXRPC_RX_LAST;
 
 	__skb_queue_tail(&call->rx_queue, skb);
-	WRITE_ONCE(call->rx_hard_ack, tseq);
+	WRITE_ONCE(call->ackr_window, tseq + 1);
 
 	trace_rxrpc_receive(call, last ? why + 1 : why,
 			    sp->hdr.serial, sp->hdr.seq, sp->nr_subpackets);
@@ -412,7 +412,7 @@ static void rxrpc_input_data_sub(struct rxrpc_call *call, struct sk_buff *skb)
 	struct rxrpc_skb_priv *sp = rxrpc_skb(skb);
 	struct sk_buff *oos;
 	rxrpc_serial_t serial = sp->hdr.serial, ack_serial = 0;
-	rxrpc_seq_t window = call->rx_hard_ack + 1;
+	rxrpc_seq_t window = call->ackr_window;
 	rxrpc_seq_t whigh = call->ackr_highest_seq;
 	rxrpc_seq_t wtop = window + call->rx_winsize - 1;
 	rxrpc_seq_t seq = sp->hdr.seq, tseq, adv, s;
@@ -584,7 +584,7 @@ static void rxrpc_input_data(struct rxrpc_call *call, struct sk_buff *skb)
 	rxrpc_seq_t seq0 = sp->hdr.seq;
 
 	_enter("{%u,%u},{%u,%u}",
-	       call->rx_hard_ack, call->ackr_highest_seq, skb->len, seq0);
+	       call->ackr_window, call->ackr_highest_seq, skb->len, seq0);
 
 	_proto("Rx DATA %%%u { #%u f=%02x n=%u }",
 	       sp->hdr.serial, seq0, sp->hdr.flags, sp->nr_subpackets);

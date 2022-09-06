@@ -651,7 +651,6 @@ struct rxrpc_call {
 	struct sk_buff_head	rx_oos_queue;	/* Queue of out of sequence packets */
 
 	rxrpc_seq_t		rx_consumed;	/* Highest packet consumed */
-	rxrpc_seq_t		rx_hard_ack;	/* Highest hard-ACK'd packet */
 	rxrpc_serial_t		rx_serial;	/* Highest serial received for this call */
 	u8			rx_winsize;	/* Size of Rx window */
 	u8			nr_jumbo_bad;	/* Number of jumbo dups/exceeds-windows */
@@ -674,6 +673,7 @@ struct rxrpc_call {
 	/* Receive-phase ACK management (ACKs we send). */
 	u8			ackr_reason;	/* reason to ACK */
 	rxrpc_serial_t		ackr_serial;	/* serial of packet being ACK'd */
+	rxrpc_seq_t		ackr_window;	/* Base of SACK window */
 	rxrpc_seq_t		ackr_highest_seq; /* Higest sequence number received */
 	atomic_t		ackr_nr_unacked; /* Number of unacked packets */
 	atomic_t		ackr_nr_consumed; /* Number of packets needing hard ACK */

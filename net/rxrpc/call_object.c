@@ -160,6 +160,7 @@ struct rxrpc_call *rxrpc_alloc_call(struct rxrpc_sock *rx, gfp_t gfp,
 	call->tx_total_len = -1;
 	call->next_rx_timo = 20 * HZ;
 	call->next_req_timo = 1 * HZ;
+	call->ackr_window = 1;
 
 	memset(&call->sock_node, 0xed, sizeof(call->sock_node));
 

@@ -78,7 +78,7 @@ static size_t rxrpc_fill_out_ack(struct rxrpc_connection *conn,
 {
 	struct rxrpc_ackinfo ackinfo;
 	unsigned int tmp, qsize;
-	rxrpc_seq_t hard_ack, window, whigh, ix, first;
+	rxrpc_seq_t window, whigh, ix, first;
 	int rsize;
 	u32 mtu, jmax;
 	u8 *ackp = txb->acks;
@@ -94,13 +94,12 @@ static size_t rxrpc_fill_out_ack(struct rxrpc_connection *conn,
 
 	/* Barrier against rxrpc_input_data(). */
 retry:
-	hard_ack = READ_ONCE(call->rx_hard_ack);
-	window = hard_ack + 1;
+	window = READ_ONCE(call->ackr_window);
 	whigh = smp_load_acquire(&call->ackr_highest_seq);
 	txb->ack.previousPacket	= htonl(whigh);
-	if (before(whigh, hard_ack)) {
+	if (before(whigh + 1, window)) {
 		cond_resched();
-		if (hard_ack == READ_ONCE(call->rx_hard_ack)) {
+		if (window == READ_ONCE(call->ackr_window)) {
 			rxrpc_inc_stat(call->rxnet, stat_tx_ack_fill_weird);
 			return 0;
 		}
@@ -113,8 +112,8 @@ retry:
 	if (txb->ack.nAcks) {
 		/* Try to copy the SACK ring locklessly. */
 		memcpy(sack_buffer, call->ackr_sack_table, sizeof(sack_buffer));
-		tmp = READ_ONCE(call->rx_hard_ack);
-		if (tmp != hard_ack) {
+		tmp = READ_ONCE(call->ackr_window);
+		if (tmp != window) {
 			cond_resched();
 			rxrpc_inc_stat(call->rxnet, stat_tx_ack_fill_retry);
 			goto retry;
@@ -143,7 +142,7 @@ retry:
 	mtu = conn->params.peer->if_mtu;
 	mtu -= conn->params.peer->hdrsize;
 	jmax = (call->nr_jumbo_bad > 3) ? 1 : rxrpc_rx_jumbo_max;
-	qsize = call->rx_hard_ack - call->rx_consumed;
+	qsize = (call->ackr_window - 1) - call->rx_consumed;
 	rsize = max_t(int, call->rx_winsize - qsize, 0);
 	ackinfo.rxMTU		= htonl(rxrpc_rx_mtu);
 	ackinfo.maxMTU		= htonl(mtu);

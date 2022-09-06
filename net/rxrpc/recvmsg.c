@@ -173,7 +173,7 @@ static int rxrpc_recvmsg_term(struct rxrpc_call *call, struct msghdr *msg)
 		break;
 	}
 
-	trace_rxrpc_recvdata(call, rxrpc_recvmsg_terminal, call->rx_hard_ack,
+	trace_rxrpc_recvdata(call, rxrpc_recvmsg_terminal, call->ackr_window - 1,
 			     call->rx_pkt_sub, call->rx_pkt_offset, call->rx_pkt_len,
 			     ret);
 	return ret;
@@ -370,7 +370,7 @@ static int rxrpc_recvmsg_data(struct socket *sock, struct rxrpc_call *call,
 	rx_pkt_sub = call->rx_pkt_sub;
 
 	if (call->state >= RXRPC_CALL_SERVER_ACK_REQUEST) {
-		seq = call->rx_hard_ack;
+		seq = call->ackr_window - 1;
 		ret = 1;
 		goto done;
 	}
