@@ -388,17 +388,24 @@ static void rxrpc_input_dup_data(struct rxrpc_call *call, rxrpc_seq_t seq,
 	}
 }
 
+static void rxrpc_input_update_ack_window(struct rxrpc_call *call,
+					  rxrpc_seq_t window, rxrpc_seq_t wtop)
+{
+	atomic64_set_release(&call->ackr_window, ((u64)wtop) << 32 | window);
+}
+
 /*
  * Push a DATA packet onto the Rx queue.
  */
 static void rxrpc_input_queue_data(struct rxrpc_call *call, struct sk_buff *skb,
-				   rxrpc_seq_t top, enum rxrpc_receive_trace why)
+				   rxrpc_seq_t window, rxrpc_seq_t wtop,
+				   enum rxrpc_receive_trace why)
 {
 	struct rxrpc_skb_priv *sp = rxrpc_skb(skb);
 	bool last = sp->flags & RXRPC_RX_LAST;
 
 	__skb_queue_tail(&call->rx_queue, skb);
-	WRITE_ONCE(call->ackr_window, top);
+	rxrpc_input_update_ack_window(call, window, wtop);
 
 	trace_rxrpc_receive(call, last ? why + 1 : why,
 			    sp->hdr.serial, sp->hdr.seq, sp->nr_subpackets);
@@ -412,8 +419,9 @@ static void rxrpc_input_data_sub(struct rxrpc_call *call, struct sk_buff *skb)
 	struct rxrpc_skb_priv *sp = rxrpc_skb(skb);
 	struct sk_buff *oos;
 	rxrpc_serial_t serial = sp->hdr.serial, ack_serial = 0;
-	rxrpc_seq_t window = call->ackr_window;
-	rxrpc_seq_t wtop = call->ackr_wtop;
+	u64 win = atomic64_read(&call->ackr_window);
+	rxrpc_seq_t window = lower_32_bits(win);
+	rxrpc_seq_t wtop = upper_32_bits(win);
 	rxrpc_seq_t wlimit = window + call->rx_winsize - 1;
 	rxrpc_seq_t seq = sp->hdr.seq, top, adv, s;
 	bool jumbo_bad = false;
@@ -491,13 +499,13 @@ static void rxrpc_input_data_sub(struct rxrpc_call *call, struct sk_buff *skb)
 			ack_reason = RXRPC_ACK_DELAY;
 			ack_serial = serial;
 		}
+		if (after(top, wtop))
+			wtop = top;
+		window = top;
 
 		spin_lock(&call->rx_queue.lock);
-		rxrpc_input_queue_data(call, skb, top, rxrpc_receive_queue);
-		if (after(top, wtop))
-			smp_store_release(&call->ackr_wtop, top);
+		rxrpc_input_queue_data(call, skb, window, wtop, rxrpc_receive_queue);
 		skb = NULL;
-		window = top;
 
 		while ((oos = skb_peek(&call->rx_oos_queue))) {
 			struct rxrpc_skb_priv *osp = rxrpc_skb(oos);
@@ -513,8 +521,9 @@ static void rxrpc_input_data_sub(struct rxrpc_call *call, struct sk_buff *skb)
 				reset_sack = true;
 			}
 
-			rxrpc_input_queue_data(call, oos, top, rxrpc_receive_queue_oos);
 			window = top;
+			rxrpc_input_queue_data(call, oos, window, wtop,
+					       rxrpc_receive_queue_oos);
 		}
 
 		spin_unlock(&call->rx_queue.lock);
@@ -535,8 +544,10 @@ static void rxrpc_input_data_sub(struct rxrpc_call *call, struct sk_buff *skb)
 			}
 		} while (s++, before(s, top));
 
-		if (after(top, wtop))
-			smp_store_release(&call->ackr_wtop, top);
+		if (after(top, wtop)) {
+			wtop = top;
+			rxrpc_input_update_ack_window(call, window, wtop);
+		}
 
 		if (!keep) {
 			rxrpc_input_dup_data(call, seq, nr_sub > 1, &jumbo_bad);
@@ -594,8 +605,9 @@ static void rxrpc_input_data(struct rxrpc_call *call, struct sk_buff *skb)
 	rxrpc_serial_t serial = sp->hdr.serial;
 	rxrpc_seq_t seq0 = sp->hdr.seq;
 
-	_enter("{%u,%u},{%u,%u}",
-	       call->ackr_window, call->rx_highest_seq, skb->len, seq0);
+	_enter("{%llx,%x},{%u,%x}",
+	       atomic64_read(&call->ackr_window), call->rx_highest_seq,
+	       skb->len, seq0);
 
 	_proto("Rx DATA %%%u { #%u f=%02x n=%u }",
 	       sp->hdr.serial, seq0, sp->hdr.flags, sp->nr_subpackets);

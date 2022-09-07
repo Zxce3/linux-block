@@ -674,8 +674,7 @@ struct rxrpc_call {
 	/* Receive-phase ACK management (ACKs we send). */
 	u8			ackr_reason;	/* reason to ACK */
 	rxrpc_serial_t		ackr_serial;	/* serial of packet being ACK'd */
-	rxrpc_seq_t		ackr_window;	/* Base of SACK window */
-	rxrpc_seq_t		ackr_wtop;	/* Top of SACK window */
+	atomic64_t		ackr_window;	/* Base (in LSW) and top (in MSW) of SACK window */
 	atomic_t		ackr_nr_unacked; /* Number of unacked packets */
 	atomic_t		ackr_nr_consumed; /* Number of packets needing hard ACK */
 	struct {

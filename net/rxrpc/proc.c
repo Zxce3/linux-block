@@ -54,8 +54,9 @@ static int rxrpc_call_seq_show(struct seq_file *seq, void *v)
 	struct rxrpc_call *call;
 	struct rxrpc_net *rxnet = rxrpc_net(seq_file_net(seq));
 	unsigned long timeout = 0;
-	rxrpc_seq_t acks_hard_ack, ackr_window;
+	rxrpc_seq_t acks_hard_ack;
 	char lbuff[50], rbuff[50];
+	u64 wtmp;
 
 	if (v == &rxnet->calls) {
 		seq_puts(seq,
@@ -91,7 +92,7 @@ static int rxrpc_call_seq_show(struct seq_file *seq, void *v)
 	}
 
 	acks_hard_ack = READ_ONCE(call->acks_hard_ack);
-	ackr_window = READ_ONCE(call->ackr_window);
+	wtmp   = atomic64_read_acquire(&call->ackr_window);
 	seq_printf(seq,
 		   "UDP   %-47.47s %-47.47s %4x %08x %08x %s %3u"
 		   " %-8.8s %08x %08x %08x %02x %08x %02x %08x %06lx\n",
@@ -106,7 +107,7 @@ static int rxrpc_call_seq_show(struct seq_file *seq, void *v)
 		   call->abort_code,
 		   call->debug_id,
 		   acks_hard_ack, READ_ONCE(call->tx_top) - acks_hard_ack,
-		   ackr_window, READ_ONCE(call->ackr_wtop) - ackr_window,
+		   lower_32_bits(wtmp), upper_32_bits(wtmp) - lower_32_bits(wtmp),
 		   call->rx_serial,
 		   timeout);
 

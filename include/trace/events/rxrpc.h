@@ -877,8 +877,7 @@ TRACE_EVENT(rxrpc_receive,
 		    __field(u8,				nr_sub		)
 		    __field(rxrpc_serial_t,		serial		)
 		    __field(rxrpc_seq_t,		seq		)
-		    __field(rxrpc_seq_t,		window		)
-		    __field(rxrpc_seq_t,		wtop		)
+		    __field(u64,			window		)
 			     ),
 
 	    TP_fast_assign(
@@ -887,8 +886,7 @@ TRACE_EVENT(rxrpc_receive,
 		    __entry->nr_sub = nr_sub;
 		    __entry->serial = serial;
 		    __entry->seq = seq;
-		    __entry->window = call->ackr_window;
-		    __entry->wtop = call->ackr_wtop;
+		    __entry->window = atomic64_read(&call->ackr_window);
 			   ),
 
 	    TP_printk("c=%08x %s r=%08x q=%08x+%x w=%08x-%08x",
@@ -897,8 +895,8 @@ TRACE_EVENT(rxrpc_receive,
 		      __entry->serial,
 		      __entry->seq,
 		      __entry->nr_sub,
-		      __entry->window,
-		      __entry->wtop)
+		      lower_32_bits(__entry->window),
+		      upper_32_bits(__entry->window))
 	    );
 
 TRACE_EVENT(rxrpc_recvmsg,
@@ -1474,7 +1472,7 @@ TRACE_EVENT(rxrpc_call_reset,
 		    __entry->call_serial = call->rx_serial;
 		    __entry->conn_serial = call->conn->hi_serial;
 		    __entry->tx_seq = call->acks_hard_ack;
-		    __entry->rx_seq = call->ackr_window;
+		    __entry->rx_seq = call->rx_highest_seq;
 			   ),
 
 	    TP_printk("c=%08x %08x:%08x r=%08x/%08x tx=%08x rx=%08x",

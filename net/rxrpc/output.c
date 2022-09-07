@@ -78,8 +78,9 @@ static size_t rxrpc_fill_out_ack(struct rxrpc_connection *conn,
 {
 	struct rxrpc_ackinfo ackinfo;
 	unsigned int tmp, qsize;
-	rxrpc_seq_t window, wtop, wlimit, ix, first;
+	rxrpc_seq_t window, wtop, wrap_point, ix, first;
 	int rsize;
+	u64 wtmp;
 	u32 mtu, jmax;
 	u8 *ackp = txb->acks;
 	u8 sack_buffer[sizeof(call->ackr_sack_table)] __aligned(8);
@@ -94,30 +95,24 @@ static size_t rxrpc_fill_out_ack(struct rxrpc_connection *conn,
 
 	/* Barrier against rxrpc_input_data(). */
 retry:
-	window = READ_ONCE(call->ackr_window);
-	wtop = smp_load_acquire(&call->ackr_wtop);
-	if (before(wtop, window)) {
-		cond_resched();
-		if (window == READ_ONCE(call->ackr_window)) {
-			kdebug("weird %x %x", window, wtop);
-			rxrpc_inc_stat(call->rxnet, stat_tx_ack_fill_weird);
-			return 0;
-		}
-		rxrpc_inc_stat(call->rxnet, stat_tx_ack_fill_retry);
-		goto retry;
-	}
+	wtmp   = atomic64_read_acquire(&call->ackr_window);
+	window = lower_32_bits(wtmp);
+	wtop   = upper_32_bits(wtmp);
+	txb->ack.firstPacket = htonl(window);
+	txb->ack.nAcks = 0;
 
-	if (wtop != window) {
+	if (after(wtop, window)) {
 		/* Try to copy the SACK ring locklessly.  We can use the copy,
 		 * only if the now-current top of the window didn't go past the
 		 * previously read base - otherwise we can't know whether we
 		 * have old data or new data.
 		 */
 		memcpy(sack_buffer, call->ackr_sack_table, sizeof(sack_buffer));
-		wlimit = window + RXRPC_SACK_SIZE - 1;
-		window = READ_ONCE(call->ackr_window);
-		wtop = smp_load_acquire(&call->ackr_wtop);
-		if (after(wtop, wlimit)) {
+		wrap_point = window + RXRPC_SACK_SIZE - 1;
+		wtmp   = atomic64_read_acquire(&call->ackr_window);
+		window = lower_32_bits(wtmp);
+		wtop   = upper_32_bits(wtmp);
+		if (after(wtop, wrap_point)) {
 			cond_resched();
 			rxrpc_inc_stat(call->rxnet, stat_tx_ack_fill_retry);
 			goto retry;
@@ -127,6 +122,7 @@ retry:
 		 * between bit position and sequence number, so we'll probably
 		 * need to rotate it.
 		 */
+		txb->ack.nAcks = wtop - window;
 		ix = window % RXRPC_SACK_SIZE;
 		first = sizeof(sack_buffer) - ix;
 
@@ -139,17 +135,17 @@ retry:
 		}
 
 		ackp += txb->ack.nAcks;
+	} else if (before(wtop, window)) {
+		pr_warn("ack window backward %x %x", window, wtop);
+		rxrpc_inc_stat(call->rxnet, stat_tx_ack_fill_weird);
 	} else if (txb->ack.reason == RXRPC_ACK_DELAY) {
 		txb->ack.reason = RXRPC_ACK_IDLE;
 	}
 
-	txb->ack.firstPacket	= htonl(window);
-	txb->ack.nAcks		= wtop - window;
-
 	mtu = conn->params.peer->if_mtu;
 	mtu -= conn->params.peer->hdrsize;
 	jmax = (call->nr_jumbo_bad > 3) ? 1 : rxrpc_rx_jumbo_max;
-	qsize = (call->ackr_window - 1) - call->rx_consumed;
+	qsize = (window - 1) - call->rx_consumed;
 	rsize = max_t(int, call->rx_winsize - qsize, 0);
 	ackinfo.rxMTU		= htonl(rxrpc_rx_mtu);
 	ackinfo.maxMTU		= htonl(mtu);
