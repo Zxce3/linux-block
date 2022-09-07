@@ -650,6 +650,7 @@ struct rxrpc_call {
 	struct sk_buff_head	rx_queue;	/* Queue of packets ready for recvmsg() */
 	struct sk_buff_head	rx_oos_queue;	/* Queue of out of sequence packets */
 
+	rxrpc_seq_t		rx_highest_seq;	/* Higest sequence number received */
 	rxrpc_seq_t		rx_consumed;	/* Highest packet consumed */
 	rxrpc_serial_t		rx_serial;	/* Highest serial received for this call */
 	u8			rx_winsize;	/* Size of Rx window */
@@ -674,7 +675,7 @@ struct rxrpc_call {
 	u8			ackr_reason;	/* reason to ACK */
 	rxrpc_serial_t		ackr_serial;	/* serial of packet being ACK'd */
 	rxrpc_seq_t		ackr_window;	/* Base of SACK window */
-	rxrpc_seq_t		ackr_highest_seq; /* Higest sequence number received */
+	rxrpc_seq_t		ackr_wtop;	/* Top of SACK window */
 	atomic_t		ackr_nr_unacked; /* Number of unacked packets */
 	atomic_t		ackr_nr_consumed; /* Number of packets needing hard ACK */
 	struct {

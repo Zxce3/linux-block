@@ -878,7 +878,7 @@ TRACE_EVENT(rxrpc_receive,
 		    __field(rxrpc_serial_t,		serial		)
 		    __field(rxrpc_seq_t,		seq		)
 		    __field(rxrpc_seq_t,		window		)
-		    __field(rxrpc_seq_t,		top		)
+		    __field(rxrpc_seq_t,		wtop		)
 			     ),
 
 	    TP_fast_assign(
@@ -888,7 +888,7 @@ TRACE_EVENT(rxrpc_receive,
 		    __entry->serial = serial;
 		    __entry->seq = seq;
 		    __entry->window = call->ackr_window;
-		    __entry->top = call->ackr_highest_seq;
+		    __entry->wtop = call->ackr_wtop;
 			   ),
 
 	    TP_printk("c=%08x %s r=%08x q=%08x+%x w=%08x-%08x",
@@ -898,7 +898,7 @@ TRACE_EVENT(rxrpc_receive,
 		      __entry->seq,
 		      __entry->nr_sub,
 		      __entry->window,
-		      __entry->top)
+		      __entry->wtop)
 	    );
 
 TRACE_EVENT(rxrpc_recvmsg,

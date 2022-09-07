@@ -184,7 +184,7 @@ static int rxrpc_recvmsg_term(struct rxrpc_call *call, struct msghdr *msg)
  */
 static void rxrpc_end_rx_phase(struct rxrpc_call *call, rxrpc_serial_t serial)
 {
-	rxrpc_seq_t whigh = READ_ONCE(call->ackr_highest_seq);
+	rxrpc_seq_t whigh = READ_ONCE(call->rx_highest_seq);
 
 	_enter("%d,%s", call->debug_id, rxrpc_call_states[call->state]);
 

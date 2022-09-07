@@ -78,7 +78,7 @@ static size_t rxrpc_fill_out_ack(struct rxrpc_connection *conn,
 {
 	struct rxrpc_ackinfo ackinfo;
 	unsigned int tmp, qsize;
-	rxrpc_seq_t window, whigh, wlimit, ix, first;
+	rxrpc_seq_t window, wtop, wlimit, ix, first;
 	int rsize;
 	u32 mtu, jmax;
 	u8 *ackp = txb->acks;
@@ -95,22 +95,19 @@ static size_t rxrpc_fill_out_ack(struct rxrpc_connection *conn,
 	/* Barrier against rxrpc_input_data(). */
 retry:
 	window = READ_ONCE(call->ackr_window);
-	whigh = smp_load_acquire(&call->ackr_highest_seq);
-	txb->ack.previousPacket	= htonl(whigh);
-	if (before(whigh + 1, window)) {
+	wtop = smp_load_acquire(&call->ackr_wtop);
+	if (before(wtop, window)) {
 		cond_resched();
 		if (window == READ_ONCE(call->ackr_window)) {
-			kdebug("weird %x %x", window, whigh);
+			kdebug("weird %x %x", window, wtop);
 			rxrpc_inc_stat(call->rxnet, stat_tx_ack_fill_weird);
 			return 0;
 		}
 		rxrpc_inc_stat(call->rxnet, stat_tx_ack_fill_retry);
 		goto retry;
 	}
-	txb->ack.firstPacket	= htonl(window);
-	txb->ack.nAcks		= whigh - (window - 1);
 
-	if (txb->ack.nAcks) {
+	if (wtop != window) {
 		/* Try to copy the SACK ring locklessly.  We can use the copy,
 		 * only if the now-current top of the window didn't go past the
 		 * previously read base - otherwise we can't know whether we
@@ -119,8 +116,8 @@ retry:
 		memcpy(sack_buffer, call->ackr_sack_table, sizeof(sack_buffer));
 		wlimit = window + RXRPC_SACK_SIZE - 1;
 		window = READ_ONCE(call->ackr_window);
-		whigh = smp_load_acquire(&call->ackr_highest_seq);
-		if (after(whigh, wlimit)) {
+		wtop = smp_load_acquire(&call->ackr_wtop);
+		if (after(wtop, wlimit)) {
 			cond_resched();
 			rxrpc_inc_stat(call->rxnet, stat_tx_ack_fill_retry);
 			goto retry;
@@ -145,6 +142,9 @@ retry:
 	} else if (txb->ack.reason == RXRPC_ACK_DELAY) {
 		txb->ack.reason = RXRPC_ACK_IDLE;
 	}
+
+	txb->ack.firstPacket	= htonl(window);
+	txb->ack.nAcks		= wtop - window;
 
 	mtu = conn->params.peer->if_mtu;
 	mtu -= conn->params.peer->hdrsize;
@@ -257,6 +257,9 @@ static int rxrpc_send_ack_packet(struct rxrpc_local *local, struct rxrpc_txbuf *
 
 	if (txb->ack.reason == RXRPC_ACK_PING)
 		rtt_slot = rxrpc_begin_rtt_probe(call, serial, rxrpc_rtt_tx_ping);
+
+	/* Grab the highest received seq as late as possible */
+	txb->ack.previousPacket	= htonl(call->rx_highest_seq);
 
 	rxrpc_inc_stat(call->rxnet, stat_tx_ack_send);
 	iov_iter_kvec(&msg.msg_iter, WRITE, iov, 1, len);
