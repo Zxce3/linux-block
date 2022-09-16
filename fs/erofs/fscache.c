@@ -184,7 +184,7 @@ static int erofs_fscache_read_folios_async(struct fscache_cookie *cookie,
 
 		atomic_inc(&rreq->nr_outstanding);
 
-		iov_iter_xarray(&iter, READ, &rreq->mapping->i_pages,
+		iov_iter_xarray(&iter, ITER_DEST, &rreq->mapping->i_pages,
 				start + done, subreq->len);
 
 		ret = fscache_read(cres, subreq->start, &iter,
@@ -363,7 +363,7 @@ static void erofs_fscache_readahead(struct readahead_control *rac)
 		if (!(map.m_flags & EROFS_MAP_MAPPED)) {
 			struct iov_iter iter;
 
-			iov_iter_xarray(&iter, READ, &rac->mapping->i_pages,
+			iov_iter_xarray(&iter, ITER_DEST, &rac->mapping->i_pages,
 					offset, count);
 			iov_iter_zero(count, &iter);
 

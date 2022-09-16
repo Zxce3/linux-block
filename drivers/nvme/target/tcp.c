@@ -347,7 +347,7 @@ static void nvmet_tcp_map_pdu_iovec(struct nvmet_tcp_cmd *cmd)
 		sg_offset = 0;
 	}
 
-	iov_iter_kvec(&cmd->recv_msg.msg_iter, READ, cmd->iov,
+	iov_iter_kvec(&cmd->recv_msg.msg_iter, ITER_DEST, cmd->iov,
 		cmd->nr_mapped, cmd->pdu_len);
 }
 
